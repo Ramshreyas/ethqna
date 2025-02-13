@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+requests
+playwright
+pydantic
+firecrawl
+python-dotenv
+PyYAML
+google-genai

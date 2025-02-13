@@ -1,0 +1,19 @@
+# config/config.yaml
+
+# List of sources to map
+sources:
+  - https://ethresear.ch
+  # Add more sources as needed
+  # - https://anotherwebsite.com
+
+# Path where data will be stored
+storage_path: data
+
+# Environment variable name for Firecrawl API key
+firecrawl_api_key_env_var: FIRECRAWL_API_KEY
+
+# Environment variable name for Gemini API key
+gemini_api_key_env_var: GEMINI_API_KEY
+
+# Role-based model selection
+long_context_llm: google   
