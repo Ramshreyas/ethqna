@@ -13,7 +13,7 @@ from . import map as fc_map  # Import map.py from the same package
 app = FastAPI(
     title="Q&A Web App Backend API",
     description="API for managing documents (PDF conversion, content hashing, and mapping) and generating summaries via LLM.",
-    version="0.3.9",
+    version="0.4.0",
 )
 
 # PDFs and metadata are stored in data/pdf_sources.
@@ -33,7 +33,7 @@ def save_json(file_path, data):
     with open(file_path, "w") as f:
         json.dump(data, f, indent=2)
 
-# Load stored documents
+# Load stored documents from documents.json
 documents = load_json(DOCUMENTS_FILE)
 
 def load_config(config_file='config/config.yaml'):
@@ -44,7 +44,7 @@ def get_llm_provider():
     """
     Dynamically load and return an instance of LLMService based on the config.
     Each provider module should export a concrete class named 'LLMService'
-    that implements the summarize(text: str) -> str method.
+    that implements the summarize(pdf_path: str, prompt: str) -> str method.
     """
     config = load_config()
     provider_name = config.get("long_context_llm", "dummy").lower()
@@ -65,7 +65,7 @@ class Document(BaseModel):
     url: HttpUrl
     pdf_file: str
     content_hash: str
-    description: str = ""  # Field for summary/description
+    description: str = ""  # Field for the summary/description
 
 class DocumentCreate(BaseModel):
     url: HttpUrl
@@ -86,9 +86,10 @@ def convert_url_to_pdf(url: HttpUrl, pdf_path: str):
     except Exception as e:
         raise Exception(f"Error converting URL to PDF: {str(e)}")
 
-def get_page_content_and_hash(url: HttpUrl) -> (str, str):
+def get_page_content_hash(url: HttpUrl) -> str:
     """
-    Returns a tuple (hash, content) for the page at the given URL.
+    Returns the hash of the HTML content of the page at the given URL.
+    (This is still used for caching purposes.)
     """
     try:
         with sync_playwright() as p:
@@ -102,10 +103,9 @@ def get_page_content_and_hash(url: HttpUrl) -> (str, str):
             page.goto(str(url), wait_until="networkidle", timeout=60000)
             content = page.content()
             browser.close()
-            hash_val = hashlib.sha256(content.encode("utf-8")).hexdigest()
-            return hash_val, content
+            return hashlib.sha256(content.encode("utf-8")).hexdigest()
     except Exception as e:
-        raise Exception(f"Error computing content and hash: {str(e)}")
+        raise Exception(f"Error computing content hash: {str(e)}")
 
 def process_page(url: str):
     existing_doc = None
@@ -114,7 +114,7 @@ def process_page(url: str):
             existing_doc = d
             break
 
-    new_hash, content = get_page_content_and_hash(url)
+    new_hash = get_page_content_hash(url)
     if existing_doc:
         if existing_doc["content_hash"] == new_hash:
             return "unchanged", existing_doc["id"]
@@ -125,7 +125,7 @@ def process_page(url: str):
             except Exception as e:
                 return "error", str(e)
             existing_doc["content_hash"] = new_hash
-            existing_doc["description"] = llm_service.summarize(content)
+            existing_doc["description"] = llm_service.summarize(os.path.join(PDF_DIR, existing_doc["pdf_file"]))
             return "updated", existing_doc["id"]
     else:
         doc_id = str(uuid.uuid4())
@@ -140,7 +140,7 @@ def process_page(url: str):
             "url": str(url),
             "pdf_file": pdf_filename,
             "content_hash": new_hash,
-            "description": llm_service.summarize(content),
+            "description": llm_service.summarize(pdf_path),
         }
         documents[doc_id] = new_doc
         return "added", doc_id
@@ -157,7 +157,7 @@ def add_document(doc: DocumentCreate):
             existing_doc = d
             break
 
-    new_hash, content = get_page_content_and_hash(doc.url)
+    new_hash = get_page_content_hash(doc.url)
     if existing_doc:
         if existing_doc["content_hash"] == new_hash:
             return existing_doc
@@ -168,7 +168,7 @@ def add_document(doc: DocumentCreate):
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
             existing_doc["content_hash"] = new_hash
-            existing_doc["description"] = llm_service.summarize(content)
+            existing_doc["description"] = llm_service.summarize(os.path.join(PDF_DIR, existing_doc["pdf_file"]))
             save_json(DOCUMENTS_FILE, documents)
             return existing_doc
     else:
@@ -184,7 +184,7 @@ def add_document(doc: DocumentCreate):
             "url": str(doc.url),
             "pdf_file": pdf_filename,
             "content_hash": new_hash,
-            "description": llm_service.summarize(content),
+            "description": llm_service.summarize(pdf_path),
         }
         documents[doc_id] = new_doc
         save_json(DOCUMENTS_FILE, documents)

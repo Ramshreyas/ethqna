@@ -1,7 +1,9 @@
-from LLM.interface import LLMService as BaseLLMService
+import pathlib
 
-class LLMService(BaseLLMService):
-    def summarize(self, text: str) -> str:
-        # Dummy implementation for the Google provider.
-        # Replace this with actual integration when ready.
-        return "DESCRIPTION/SUMMARY COMES HERE"
+class LLMService:
+    def summarize(self, pdf_path: str) -> str:
+        try:
+            file_size = pathlib.Path(pdf_path).stat().st_size
+            return f"Dummy summary: The document is {file_size} bytes in size."
+        except Exception as e:
+            return f"Dummy summarization error: {str(e)}"
