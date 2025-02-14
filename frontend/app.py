@@ -17,6 +17,9 @@ with open(config_path, 'r') as f:
 gemini_api_key_env_var = config.get('gemini_api_key_env_var', 'GEMINI_API_KEY')
 api_key = os.getenv(gemini_api_key_env_var)
 
+# Import the prompt builder.
+from prompts import build_prompt
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -36,20 +39,8 @@ def chat():
     except Exception as e:
         return jsonify({'response': f"Error reading PDF: {e}", 'page': None})
     
-    # Create an enhanced prompt to instruct Gemini to return structured JSON output.
-    enhanced_prompt = f"""
-{user_message}
-
-Based on the content of the provided PDF document, please provide a detailed answer to the query.
-Return the answer in JSON format following the schema below EXACTLY:
-
-{{
-  "response": "<Your answer as text>",
-  "page": <Relevant page number as an integer>
-}}
-
-Ensure that your output is valid JSON and nothing else.
-"""
+    # Build the enhanced prompt using the external function.
+    enhanced_prompt = build_prompt(user_message)
 
     from google import genai
     from google.genai import types
@@ -76,10 +67,8 @@ Ensure that your output is valid JSON and nothing else.
         cleaned_response = raw_response
         if cleaned_response.startswith("```"):
             lines = cleaned_response.splitlines()
-            # Remove first line if it's a fence.
             if lines and lines[0].strip().startswith("```"):
                 lines = lines[1:]
-            # Remove last line if it's a fence.
             if lines and lines[-1].strip().startswith("```"):
                 lines = lines[:-1]
             cleaned_response = "\n".join(lines).strip()
@@ -89,8 +78,6 @@ Ensure that your output is valid JSON and nothing else.
         parsed_response = json.loads(cleaned_response)
         answer_text = parsed_response.get("response", "")
         page_number = parsed_response.get("page", None)
-
-        # Prepare a combined string for display in the chat.
         combined_response = f"Answer: {answer_text} (Page {page_number})"
     except Exception as e:
         print("Error parsing Gemini response:", raw_response)
