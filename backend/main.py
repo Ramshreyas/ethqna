@@ -4,23 +4,22 @@ import json
 import hashlib
 import yaml
 import importlib
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, HttpUrl
+from fastapi import FastAPI, HTTPException, File, UploadFile
+from pydantic import BaseModel
 from typing import List
 from playwright.sync_api import sync_playwright
 from . import map as fc_map  # Import map.py from the same package
 
 app = FastAPI(
     title="Q&A Web App Backend API",
-    description="API for managing documents (PDF conversion, content hashing, and mapping) and generating summaries via LLM.",
-    version="0.4.0",
+    description="API for managing documents and generating summaries/answers via LLM.",
+    version="0.3.10",
 )
 
 # PDFs and metadata are stored in data/pdf_sources.
 PDF_DIR = os.path.join("data", "pdf_sources")
 if not os.path.exists(PDF_DIR):
     os.makedirs(PDF_DIR)
-
 DOCUMENTS_FILE = os.path.join(PDF_DIR, "documents.json")
 
 def load_json(file_path):
@@ -33,7 +32,7 @@ def save_json(file_path, data):
     with open(file_path, "w") as f:
         json.dump(data, f, indent=2)
 
-# Load stored documents from documents.json
+# Load stored documents from documents.json.
 documents = load_json(DOCUMENTS_FILE)
 
 def load_config(config_file='config/config.yaml'):
@@ -44,7 +43,7 @@ def get_llm_provider():
     """
     Dynamically load and return an instance of LLMService based on the config.
     Each provider module should export a concrete class named 'LLMService'
-    that implements the summarize(pdf_path: str, prompt: str) -> str method.
+    that implements summarize(text: str) -> str.
     """
     config = load_config()
     provider_name = config.get("long_context_llm", "dummy").lower()
@@ -59,18 +58,42 @@ def get_llm_provider():
 # Instantiate our LLM provider using configuration.
 llm_service = get_llm_provider()
 
-# Pydantic models for documents
+def get_query_prompt():
+    config = load_config()
+    provider_name = config.get("long_context_llm", "dummy").lower()
+    module_path = f"LLM.providers.{provider_name}.prompts"
+    try:
+        prompt_module = importlib.import_module(module_path)
+        return getattr(prompt_module, "QUERY_DOCUMENTS_PROMPT")
+    except Exception as e:
+        raise Exception(f"Error loading prompt for provider '{provider_name}': {e}")
+
+# Updated Pydantic models for documents and query requests.
 class Document(BaseModel):
     id: str
-    url: HttpUrl
+    url: str            # Changed from HttpUrl to str to allow custom schemes.
     pdf_file: str
     content_hash: str
-    description: str = ""  # Field for the summary/description
+    description: str = ""
 
 class DocumentCreate(BaseModel):
-    url: HttpUrl
+    url: str            # Changed to str for consistency.
 
-def convert_url_to_pdf(url: HttpUrl, pdf_path: str):
+class QuerySelectAdvancedRequest(BaseModel):
+    query: str
+
+class QuerySelectAdvancedResponseDocument(BaseModel):
+    id: str
+    url: str
+    pdf_file: str
+    content_hash: str
+    description: str
+    relevance: float
+
+class QuerySelectAdvancedResponse(BaseModel):
+    documents: List[QuerySelectAdvancedResponseDocument]
+
+def convert_url_to_pdf(url: str, pdf_path: str):
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -86,11 +109,7 @@ def convert_url_to_pdf(url: HttpUrl, pdf_path: str):
     except Exception as e:
         raise Exception(f"Error converting URL to PDF: {str(e)}")
 
-def get_page_content_hash(url: HttpUrl) -> str:
-    """
-    Returns the hash of the HTML content of the page at the given URL.
-    (This is still used for caching purposes.)
-    """
+def get_page_content_and_hash(url: str) -> (str, str):
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -103,9 +122,10 @@ def get_page_content_hash(url: HttpUrl) -> str:
             page.goto(str(url), wait_until="networkidle", timeout=60000)
             content = page.content()
             browser.close()
-            return hashlib.sha256(content.encode("utf-8")).hexdigest()
+            hash_val = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            return hash_val, content
     except Exception as e:
-        raise Exception(f"Error computing content hash: {str(e)}")
+        raise Exception(f"Error computing content and hash: {str(e)}")
 
 def process_page(url: str):
     existing_doc = None
@@ -114,7 +134,7 @@ def process_page(url: str):
             existing_doc = d
             break
 
-    new_hash = get_page_content_hash(url)
+    new_hash, content = get_page_content_and_hash(url)
     if existing_doc:
         if existing_doc["content_hash"] == new_hash:
             return "unchanged", existing_doc["id"]
@@ -125,7 +145,7 @@ def process_page(url: str):
             except Exception as e:
                 return "error", str(e)
             existing_doc["content_hash"] = new_hash
-            existing_doc["description"] = llm_service.summarize(os.path.join(PDF_DIR, existing_doc["pdf_file"]))
+            existing_doc["description"] = llm_service.summarize(content)
             return "updated", existing_doc["id"]
     else:
         doc_id = str(uuid.uuid4())
@@ -140,7 +160,7 @@ def process_page(url: str):
             "url": str(url),
             "pdf_file": pdf_filename,
             "content_hash": new_hash,
-            "description": llm_service.summarize(pdf_path),
+            "description": llm_service.summarize(content),
         }
         documents[doc_id] = new_doc
         return "added", doc_id
@@ -157,7 +177,7 @@ def add_document(doc: DocumentCreate):
             existing_doc = d
             break
 
-    new_hash = get_page_content_hash(doc.url)
+    new_hash, content = get_page_content_and_hash(doc.url)
     if existing_doc:
         if existing_doc["content_hash"] == new_hash:
             return existing_doc
@@ -168,7 +188,7 @@ def add_document(doc: DocumentCreate):
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
             existing_doc["content_hash"] = new_hash
-            existing_doc["description"] = llm_service.summarize(os.path.join(PDF_DIR, existing_doc["pdf_file"]))
+            existing_doc["description"] = llm_service.summarize(content)
             save_json(DOCUMENTS_FILE, documents)
             return existing_doc
     else:
@@ -184,7 +204,7 @@ def add_document(doc: DocumentCreate):
             "url": str(doc.url),
             "pdf_file": pdf_filename,
             "content_hash": new_hash,
-            "description": llm_service.summarize(pdf_path),
+            "description": llm_service.summarize(content),
         }
         documents[doc_id] = new_doc
         save_json(DOCUMENTS_FILE, documents)
@@ -201,6 +221,85 @@ def delete_document(doc_id: str):
     del documents[doc_id]
     save_json(DOCUMENTS_FILE, documents)
     return {"detail": "Document deleted successfully"}
+
+@app.post("/upload", response_model=Document, summary="Upload a PDF file and generate its metadata")
+async def upload_pdf(file: UploadFile = File(...)):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PDFs are accepted.")
+    
+    doc_id = str(uuid.uuid4())
+    pdf_filename = f"{doc_id}.pdf"
+    pdf_path = os.path.join(PDF_DIR, pdf_filename)
+    
+    try:
+        file_bytes = await file.read()
+        with open(pdf_path, "wb") as f:
+            f.write(file_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save PDF: {e}")
+    
+    try:
+        new_hash = hashlib.sha256(file_bytes).hexdigest()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to compute file hash: {e}")
+    
+    # Pass the saved file path to the LLM service for summarization.
+    summary = llm_service.summarize(pdf_path)
+    
+    new_doc = {
+        "id": doc_id,
+        "url": f"local://{pdf_filename}",
+        "pdf_file": pdf_filename,
+        "content_hash": new_hash,
+        "description": summary,
+    }
+    documents[doc_id] = new_doc
+    save_json(DOCUMENTS_FILE, documents)
+    return new_doc
+
+
+@app.post("/query/select_advanced", response_model=QuerySelectAdvancedResponse, summary="Select top 5 documents based on query")
+def query_select_advanced(request: QuerySelectAdvancedRequest):
+    query = request.query
+    documents_json = json.dumps(documents)
+    try:
+        QUERY_DOCUMENTS_PROMPT = get_query_prompt()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    prompt = QUERY_DOCUMENTS_PROMPT.format(documents_json=documents_json, query=query)
+    
+    try:
+        from google import genai
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Google GenAI module not available.")
+    
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY environment variable not set.")
+    
+    client = genai.Client(api_key=gemini_api_key)
+    response = client.models.generate_content(
+        model='gemini-2.0-flash',
+        contents=prompt,
+    )
+    raw_text = response.text
+    print("DEBUG: Raw Gemini response:", raw_text)
+    cleaned_text = raw_text.strip()
+    if cleaned_text.startswith("```json"):
+        cleaned_text = cleaned_text[len("```json"):].strip()
+    if cleaned_text.endswith("```"):
+        cleaned_text = cleaned_text[:-3].strip()
+    try:
+        result = json.loads(cleaned_text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error parsing Gemini response: {e}. Raw response: {raw_text}")
+    
+    if isinstance(result, list):
+        top_docs = result[:5]
+    else:
+        top_docs = result
+    return {"documents": top_docs}
 
 @app.post("/map-sources", summary="Map sources from config using firecrawl")
 def map_sources_endpoint():

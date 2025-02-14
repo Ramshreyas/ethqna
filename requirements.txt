@@ -7,3 +7,4 @@ firecrawl
 python-dotenv
 PyYAML
 google-genai
+python-multipart

@@ -76,3 +76,6 @@ Thumbs.db
 
 # Conda environment metadata
 conda-meta/
+
+# PDF files
+*.pdf
