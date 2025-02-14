@@ -8,3 +8,4 @@ python-dotenv
 PyYAML
 google-genai
 python-multipart
+flask==2.3.2

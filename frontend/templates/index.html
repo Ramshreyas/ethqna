@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETHQnA</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    .chat-panel {
+      flex: 1;
+      border-right: 1px solid #ccc;
+      display: flex;
+      flex-direction: column;
+    }
+    .pdf-panel {
+      flex: 1;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .chat-input {
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: #eee;
+    }
+    .chat-message {
+      margin-bottom: 8px;
+    }
+    .user {
+      font-weight: bold;
+    }
+    .bot {
+      font-style: italic;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <div class="chat-messages" id="chat-messages">
+        <!-- Chat messages will appear here -->
+      </div>
+      <div class="chat-input">
+        <input type="text" id="message-input" placeholder="Type your message..." style="width: 80%;" />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <!-- PDF Panel -->
+    <div class="pdf-panel">
+      <!-- Note the added id for the iframe -->
+      <iframe id="pdf-viewer" src="/pdf" width="100%" height="100%"></iframe>
+    </div>
+  </div>
+
+  <script>
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+      if (message === '') return;
+
+      // Append the user's message to the chat.
+      const chatMessages = document.getElementById('chat-messages');
+      const userMessageDiv = document.createElement('div');
+      userMessageDiv.classList.add('chat-message', 'user');
+      userMessageDiv.textContent = "User: " + message;
+      chatMessages.appendChild(userMessageDiv);
+
+      // Clear the input field.
+      input.value = '';
+
+      // Post the message to the backend.
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Append the Gemini response to the chat.
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.classList.add('chat-message', 'bot');
+        botMessageDiv.textContent = data.response;
+        chatMessages.appendChild(botMessageDiv);
+
+        // Auto-scroll to the bottom of the chat.
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // If a valid page number is provided, update the PDF view.
+        if (data.page) {
+          const pdfViewer = document.getElementById('pdf-viewer');
+          // Append the page fragment to the PDF URL (most browsers' built-in PDF viewers support this)
+          pdfViewer.src = '/pdf#page=' + data.page;
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+      });
+    }
+  </script>
+</body>
+</html>
