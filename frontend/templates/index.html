@@ -3,16 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ETHQnA</title>
+  <title>ETH QnA</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header .header-left {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    header .header-right a {
+      color: #fff;
+      text-decoration: none;
+      margin-left: 15px;
+      font-size: 16px;
+    }
+    header .header-right a:hover {
+      text-decoration: underline;
     }
     .container {
       display: flex;
-      height: 100vh;
+      flex: 1;
     }
     .chat-panel {
       flex: 1;
@@ -33,6 +57,19 @@
       padding: 10px;
       border-top: 1px solid #ccc;
       background: #eee;
+      display: flex;
+      align-items: center;
+    }
+    .chat-input input[type="text"] {
+      width: 80%;
+      padding: 8px;
+      font-size: 14px;
+    }
+    .chat-input button {
+      padding: 8px 12px;
+      margin-left: 10px;
+      font-size: 14px;
+      cursor: pointer;
     }
     .chat-message {
       margin-bottom: 8px;
@@ -44,9 +81,38 @@
       font-style: italic;
       color: #555;
     }
+    /* Simple spinner style */
+    .spinner {
+      display: none; /* Hidden by default */
+      width: 30px;
+      height: 30px;
+      border: 4px solid #ccc;
+      border-top-color: #333;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    footer {
+      background: #333;
+      color: #fff;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
+  <header>
+    <div class="header-left">ETH QnA</div>
+    <div class="header-right">
+      <a href="#">About</a>
+      <a href="#">Contact Us</a>
+    </div>
+  </header>
+  
   <div class="container">
     <!-- Chat Panel -->
     <div class="chat-panel">
@@ -54,19 +120,30 @@
         <!-- Chat messages will appear here -->
       </div>
       <div class="chat-input">
-        <input type="text" id="message-input" placeholder="Type your message..." style="width: 80%;" />
+        <input type="text" id="message-input" placeholder="Type your message..." />
         <button onclick="sendMessage()">Send</button>
+        <div class="spinner" id="spinner"></div>
       </div>
     </div>
 
     <!-- PDF Panel -->
     <div class="pdf-panel">
-      <!-- Note the added id for the iframe -->
       <iframe id="pdf-viewer" src="/pdf" width="100%" height="100%"></iframe>
     </div>
   </div>
 
+  <footer>
+    &copy; 2025 ETH QnA. All rights reserved.
+  </footer>
+
   <script>
+    // Trigger sendMessage on Enter key press
+    document.getElementById('message-input').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
     function sendMessage() {
       const input = document.getElementById('message-input');
       const message = input.value.trim();
@@ -82,6 +159,10 @@
       // Clear the input field.
       input.value = '';
 
+      // Show the spinner.
+      const spinner = document.getElementById('spinner');
+      spinner.style.display = 'block';
+
       // Post the message to the backend.
       fetch('/chat', {
         method: 'POST',
@@ -90,6 +171,9 @@
       })
       .then(response => response.json())
       .then(data => {
+        // Hide the spinner.
+        spinner.style.display = 'none';
+
         // Append the Gemini response to the chat.
         const botMessageDiv = document.createElement('div');
         botMessageDiv.classList.add('chat-message', 'bot');
@@ -102,12 +186,13 @@
         // If a valid page number is provided, update the PDF view.
         if (data.page) {
           const pdfViewer = document.getElementById('pdf-viewer');
-          // Append the page fragment to the PDF URL (most browsers' built-in PDF viewers support this)
+          // Append the page fragment to the PDF URL.
           pdfViewer.src = '/pdf#page=' + data.page;
         }
       })
       .catch(error => {
         console.error("Error:", error);
+        spinner.style.display = 'none';
       });
     }
   </script>
