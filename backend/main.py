@@ -4,16 +4,36 @@ import json
 import hashlib
 import yaml
 import importlib
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 from pydantic import BaseModel
 from typing import List
 from playwright.sync_api import sync_playwright
 from . import map as fc_map  # Import map.py from the same package
 
+# --- Basic Auth Setup ---
+security = HTTPBasic()
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    # Get admin credentials from environment variables (or defaults)
+    correct_username = os.environ.get("ADMIN_USERNAME", "admin")
+    correct_password = os.environ.get("ADMIN_PASSWORD", "secret")
+    if not (secrets.compare_digest(credentials.username, correct_username) and 
+            secrets.compare_digest(credentials.password, correct_password)):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+# --- FastAPI Application with global dependency ---
 app = FastAPI(
     title="Q&A Web App Backend API",
     description="API for managing documents and generating summaries/answers via LLM.",
     version="0.3.10",
+    dependencies=[Depends(get_current_username)]
 )
 
 # PDFs and metadata are stored in data/pdf_sources.
@@ -256,7 +276,6 @@ async def upload_pdf(file: UploadFile = File(...)):
     documents[doc_id] = new_doc
     save_json(DOCUMENTS_FILE, documents)
     return new_doc
-
 
 @app.post("/query/select_advanced", response_model=QuerySelectAdvancedResponse, summary="Select top 5 documents based on query")
 def query_select_advanced(request: QuerySelectAdvancedRequest):
