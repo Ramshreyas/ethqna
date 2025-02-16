@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETH QnA - Authentication</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .auth-container {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h2>Ethereum.org Authentication</h2>
+    <div id="step1">
+      <p>Enter your ethereum.org email handle (the part before "@ethereum.org"):</p>
+      <input type="text" id="email-handle" placeholder="your.handle">
+      <p>@ethereum.org</p>
+      <button onclick="sendCode()">Send Code</button>
+      <p id="error-msg" class="error"></p>
+    </div>
+    <div id="step2" style="display: none;">
+      <p>A verification code was sent to <span id="display-email"></span>.</p>
+      <p>Please enter the code below:</p>
+      <input type="text" id="verification-code" placeholder="Enter code">
+      <button onclick="verifyCode()">Verify</button>
+      <p id="verify-error" class="error"></p>
+    </div>
+  </div>
+  <script>
+    function sendCode() {
+      var emailHandle = document.getElementById("email-handle").value.trim();
+      if (!emailHandle) {
+        document.getElementById("error-msg").textContent = "Please enter your email handle.";
+        return;
+      }
+      fetch("/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email_handle: emailHandle })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "sent") {
+          document.getElementById("error-msg").textContent = "";
+          document.getElementById("display-email").textContent = emailHandle + "@ethereum.org";
+          document.getElementById("step1").style.display = "none";
+          document.getElementById("step2").style.display = "block";
+        } else {
+          document.getElementById("error-msg").textContent = data.message;
+        }
+      })
+      .catch(err => {
+        document.getElementById("error-msg").textContent = "An error occurred.";
+        console.error(err);
+      });
+    }
+
+    function verifyCode() {
+      var emailHandle = document.getElementById("email-handle").value.trim();
+      var code = document.getElementById("verification-code").value.trim();
+      if (!code) {
+        document.getElementById("verify-error").textContent = "Please enter the verification code.";
+        return;
+      }
+      fetch("/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email_handle: emailHandle, code: code })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "verified") {
+          window.location.href = "/";
+        } else {
+          document.getElementById("verify-error").textContent = data.message;
+        }
+      })
+      .catch(err => {
+        document.getElementById("verify-error").textContent = "An error occurred.";
+        console.error(err);
+      });
+    }
+  </script>
+</body>
+</html>
