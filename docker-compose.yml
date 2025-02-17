@@ -1,12 +1,22 @@
 services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: ethqna-nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro  # Your certs folder with cert.pem and key.pem
+    depends_on:
+      - frontend
+
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    ports:
-      - "80:5000"
-    depends_on:
-      - backend
+    container_name: ethqna-frontend
+    expose:
+      - "5000"
     env_file:
       - .env
     volumes:
@@ -16,6 +26,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    container_name: ethqna-backend
     ports:
       - "8000:8000"
     env_file:
