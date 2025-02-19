@@ -10,3 +10,4 @@ google-genai
 python-multipart
 flask==2.3.2
 Flask-Dance
+Werkzeug>=2.0.0
