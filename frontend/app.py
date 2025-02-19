@@ -17,7 +17,7 @@ from flask import (
     send_from_directory,
 )
 from dotenv import load_dotenv
-from werkzeug.middleware.proxy_fix import ProxyFix  # <-- Add this
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Load environment variables from the project root .env
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
@@ -26,11 +26,9 @@ load_dotenv(dotenv_path)
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
 
-# Ensure Flask generates HTTPS URLs
+# Force Flask to generate URLs with HTTPS.
 app.config['PREFERRED_URL_SCHEME'] = 'https'
-
-# Wrap the app with ProxyFix so that Flask respects headers from our reverse proxy.
-# This tells Flask to trust the X-Forwarded-Proto and X-Forwarded-Host headers.
+# Wrap with ProxyFix to trust reverse-proxy headers (X-Forwarded-Proto, etc.)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Load configuration for Gemini API from config/config.yaml
@@ -49,7 +47,11 @@ from flask_dance.contrib.google import make_google_blueprint, google
 google_bp = make_google_blueprint(
     client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID"),
     client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"),
-    scope=["profile", "email"],
+    scope=[
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+    ],
     redirect_to="index"  # After login, redirect to the index endpoint.
 )
 app.register_blueprint(google_bp, url_prefix="/login")
