@@ -2,9 +2,10 @@ import os
 import random
 import time
 import json
-from datetime import datetime, timedelta
+import hashlib
 import yaml
-
+import importlib
+from datetime import datetime, timedelta
 from flask import (
     Flask,
     request,
@@ -34,100 +35,49 @@ api_key = os.getenv(gemini_api_key_env_var)
 # Import the prompt builder
 from prompts import build_prompt
 
-# Persistent store file for pending verification codes
-PENDING_VERIFICATIONS_FILE = os.path.join(app.root_path, 'pending_verifications.json')
+# --- Google OAuth Setup using Flask-Dance ---
+from flask_dance.contrib.google import make_google_blueprint, google
 
-def load_pending_verifications():
-    if not os.path.exists(PENDING_VERIFICATIONS_FILE):
-        return {}
-    try:
-        with open(PENDING_VERIFICATIONS_FILE, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        print("Error loading pending verifications:", e)
-        return {}
+google_bp = make_google_blueprint(
+    client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+    scope=["profile", "email"],
+    redirect_url="/"  # After login, redirect to "/"
+)
+app.register_blueprint(google_bp, url_prefix="/login")
 
-def save_pending_verifications(data):
-    try:
-        with open(PENDING_VERIFICATIONS_FILE, 'w') as f:
-            json.dump(data, f)
-    except Exception as e:
-        print("Error saving pending verifications:", e)
+# --- Remove the previous custom auth endpoints ---
+# (The /auth, /send-code, and /verify-code endpoints are no longer needed.)
 
-# --- Authentication Endpoints ---
+# --- Main Application Routes ---
 
 @app.route("/")
 def index():
-    # If not authenticated, redirect to the auth page.
-    if not request.cookies.get("auth"):
-        return redirect(url_for("auth"))
-    return render_template("index.html")
+    # If the user is not authorized via Google, render the login page.
+    if not google.authorized:
+        return render_template("login.html")
+    resp = google.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        # Force a re-login if userinfo cannot be retrieved.
+        return redirect(url_for("google.login"))
+    user_info = resp.json()
+    email = user_info.get("email", "")
+    # Allow only ethereum.org accounts.
+    if not email.endswith("@ethereum.org"):
+        return "Access denied: You must use an ethereum.org email", 403
+    # User is authenticated; render the main page.
+    return render_template("index.html", user=user_info)
 
-@app.route("/auth")
-def auth():
-    return render_template("auth.html")
-
-@app.route("/send-code", methods=["POST"])
-def send_code():
-    data = request.get_json()
-    email_handle = data.get("email_handle", "").strip()
-    if not email_handle:
-        return jsonify({"status": "error", "message": "Email handle is required."}), 400
-
-    full_email = f"{email_handle}@ethereum.org"
-    code = str(random.randint(100000, 999999))
-    expiry = time.time() + 5 * 60  # 5 minutes expiry
-
-    pending = load_pending_verifications()
-    pending[full_email] = {"code": code, "expiry": expiry}
-    save_pending_verifications(pending)
-
-    # For demonstration, we print the code.
-    print(f"Sending verification code to {full_email}: {code}")
-    return jsonify({"status": "sent", "message": "Verification code sent."})
-
-@app.route("/verify-code", methods=["POST"])
-def verify_code():
-    data = request.get_json()
-    email_handle = data.get("email_handle", "").strip()
-    code_submitted = data.get("code", "").strip()
-    if not email_handle or not code_submitted:
-        return jsonify({"status": "error", "message": "Email handle and code are required."}), 400
-
-    full_email = f"{email_handle}@ethereum.org"
-    pending = load_pending_verifications()
-    if full_email not in pending:
-        return jsonify({"status": "error", "message": "No code sent to this email."}), 400
-
-    stored_data = pending.get(full_email)
-    stored_code = stored_data.get("code")
-    expiry = stored_data.get("expiry")
-    if time.time() > expiry:
-        pending.pop(full_email, None)
-        save_pending_verifications(pending)
-        return jsonify({"status": "error", "message": "Verification code expired."}), 400
-
-    if code_submitted != stored_code:
-        return jsonify({"status": "error", "message": "Incorrect verification code."}), 400
-
-    # Verification successful; remove the pending entry.
-    pending.pop(full_email, None)
-    save_pending_verifications(pending)
-
-    # Set an auth cookie valid for one month.
-    resp = make_response(jsonify({"status": "verified", "message": "Email verified."}))
-    expire_date = datetime.now() + timedelta(days=30)
-    resp.set_cookie("auth", full_email, expires=expire_date, httponly=True)
-    return resp
-
-# --- Main Application Endpoints ---
+@app.route("/logout")
+def logout():
+    # Clear the OAuth token to log out.
+    if google_bp.token:
+        del google_bp.token
+    return redirect(url_for("index"))
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    # Ensure the user is authenticated.
-    if not request.cookies.get("auth"):
-        return jsonify({"response": "Not authenticated", "page": None}), 401
-
+    # At this point, we assume the user is authenticated via Google.
     data = request.get_json()
     user_message = data.get("message", "")
 
