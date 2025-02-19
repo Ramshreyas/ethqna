@@ -140,7 +140,7 @@ def chat():
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    filename = 'e10894e5-eb42-4ac6-aa7d-afee1e87f8af.pdf'
+    filename = '9fffd003-17d4-451f-96ec-786c8d5f9ce8.pdf'
     return send_from_directory(directory, filename)
 
 if __name__ == "__main__":
