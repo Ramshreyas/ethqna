@@ -25,6 +25,9 @@ load_dotenv(dotenv_path)
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
 
+# Force URL generation with HTTPS
+app.config['PREFERRED_URL_SCHEME'] = 'https'
+
 # Load configuration for Gemini API from config/config.yaml
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'config.yaml')
 with open(config_path, 'r') as f:
@@ -42,12 +45,9 @@ google_bp = make_google_blueprint(
     client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID"),
     client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"),
     scope=["profile", "email"],
-    redirect_url="/"  # After login, redirect to "/"
+    redirect_to="index"  # After login, redirect to the index endpoint
 )
 app.register_blueprint(google_bp, url_prefix="/login")
-
-# --- Remove the previous custom auth endpoints ---
-# (The /auth, /send-code, and /verify-code endpoints are no longer needed.)
 
 # --- Main Application Routes ---
 
