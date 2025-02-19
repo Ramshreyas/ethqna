@@ -89,7 +89,7 @@ def chat():
     user_message = data.get("message", "")
 
     # Read the PDF file.
-    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'e10894e5-eb42-4ac6-aa7d-afee1e87f8af.pdf')
+    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '9fffd003-17d4-451f-96ec-786c8d5f9ce8.pdf')
     try:
         with open(pdf_path, 'rb') as f:
             pdf_data = f.read()
