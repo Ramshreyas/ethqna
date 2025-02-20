@@ -30,6 +30,19 @@ class LLMService:
             contents = [input_str, prompt]
         
         return contents
+    
+    def summarize(self, input_str: str) -> str:
+        """Summarizes a PDF file or text input using SUMMARIZATION_PROMPT."""
+        print("DEBUG: Summarizing document...")
+        contents = self._process_input(input_str, SUMMARIZATION_PROMPT)
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=types.GenerateContentConfig(system_instruction=SUMMARIZATION_PROMPT),
+            contents=contents
+        )
+        print("DEBUG: Gemini API summary response:", response.text)
+        return response.text
 
     def generate_metadata(self, input_str: str) -> dict:
         """Extracts metadata (title, authors, date, tags) from a PDF or text input."""
