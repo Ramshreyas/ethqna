@@ -263,18 +263,31 @@ async def upload_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compute file hash: {e}")
     
-    # Pass the saved file path to the LLM service for summarization.
+    # Generate summary using LLM
     summary = llm_service.summarize(pdf_path)
+
+    # Generate metadata using LLM
+    try:
+        metadata = llm_service.generate_metadata(pdf_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to extract metadata: {e}")
     
+    # Ensure expected metadata fields exist
     new_doc = {
         "id": doc_id,
         "url": f"local://{pdf_filename}",
         "pdf_file": pdf_filename,
         "content_hash": new_hash,
         "description": summary,
+        "title": metadata.get("title", "Unknown Title"),
+        "date": metadata.get("date", None),
+        "authors": metadata.get("authors", []),
+        "tags": metadata.get("tags", [])
     }
+
     documents[doc_id] = new_doc
     save_json(DOCUMENTS_FILE, documents)
+    
     return new_doc
 
 @app.post("/query/select_advanced", response_model=QuerySelectAdvancedResponse, summary="Select top 5 documents based on query")

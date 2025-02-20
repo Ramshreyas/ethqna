@@ -4,6 +4,33 @@ SYSTEM_PROMPT = (
     "The text will follow the instruction provided below."
 )
 
+METADATA_PROMPT = (
+  """
+  Task: Extract structured metadata from the following PDF document. Return the metadata in a valid JSON format.
+
+Instructions:
+Analyze the document and extract the following fields:
+
+    Title - The document’s title, if available.
+    Date - The date the document was created or published. If not explicitly mentioned, infer the most likely date from the content.
+    Authors - The names of the authors, creators, or organizations responsible for the document.
+    Short Description - A concise summary (2-3 sentences) describing the main purpose or key insights of the document.
+    Tags - A list of relevant topics, themes, or keywords extracted from the document. Use concise, meaningful words.
+
+Example Output:
+
+{
+  "title": "Ethereum Scaling Strategies: A Research Overview",
+  "date": "2023-10-15",
+  "authors": ["Vitalik Buterin", "Ethereum Foundation Research Team"],
+  "short_description": "This paper explores various scaling solutions for Ethereum, including rollups, sharding, and data availability layers. It discusses their trade-offs and future research directions.",
+  "tags": ["Ethereum", "scaling", "rollups", "sharding", "data availability"]
+}
+
+Ensure the output follows this JSON format and accurately reflects the content of the document. If any field is missing, infer the best possible answer or leave it as null.
+"""
+)
+
 SUMMARIZATION_PROMPT = (
     "Summarize the following PDF according to these instructions:\n"
     "1. List the top 5 topics discussed in the document.\n"
@@ -44,4 +71,3 @@ Return the result as a JSON array of objects, where each object follows this sch
 
 Ensure that the output is valid JSON.
 """
-
