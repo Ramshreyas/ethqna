@@ -18,6 +18,7 @@ from flask import (
 )
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
+from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
 
 # Load environment variables from the project root .env
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
@@ -26,9 +27,9 @@ load_dotenv(dotenv_path)
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
 
-# Force Flask to generate URLs with HTTPS.
+# Force Flask to generate HTTPS URLs
 app.config['PREFERRED_URL_SCHEME'] = 'https'
-# Wrap with ProxyFix to trust reverse-proxy headers (X-Forwarded-Proto, etc.)
+# Use ProxyFix to trust reverse proxy headers
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Load configuration for Gemini API from config/config.yaml
@@ -63,7 +64,14 @@ def index():
     # If the user is not authorized via Google, render the login page.
     if not google.authorized:
         return render_template("login.html")
-    resp = google.get("/oauth2/v2/userinfo")
+    try:
+        resp = google.get("/oauth2/v2/userinfo")
+    except TokenExpiredError:
+        # Token expired; redirect to login to refresh it.
+        return redirect(url_for("google.login"))
+    except Exception:
+        # Any other error: redirect to login.
+        return redirect(url_for("google.login"))
     if not resp.ok:
         # Force a re-login if userinfo cannot be retrieved.
         return redirect(url_for("google.login"))
@@ -89,7 +97,7 @@ def chat():
     user_message = data.get("message", "")
 
     # Read the PDF file.
-    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
+    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'e10894e5-eb42-4ac6-aa7d-afee1e87f8af.pdf')
     try:
         with open(pdf_path, 'rb') as f:
             pdf_data = f.read()
@@ -140,7 +148,7 @@ def chat():
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    filename = '41dd8407-7914-4978-a078-8dc597d8fb86.pdf'
+    filename = 'e10894e5-eb42-4ac6-aa7d-afee1e87f8af.pdf'
     return send_from_directory(directory, filename)
 
 if __name__ == "__main__":
