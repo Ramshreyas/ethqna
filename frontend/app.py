@@ -89,7 +89,7 @@ def chat():
     user_message = data.get("message", "")
 
     # Read the PDF file.
-    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '9fffd003-17d4-451f-96ec-786c8d5f9ce8.pdf')
+    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     try:
         with open(pdf_path, 'rb') as f:
             pdf_data = f.read()
@@ -140,7 +140,7 @@ def chat():
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    filename = '9fffd003-17d4-451f-96ec-786c8d5f9ce8.pdf'
+    filename = '41dd8407-7914-4978-a078-8dc597d8fb86.pdf'
     return send_from_directory(directory, filename)
 
 if __name__ == "__main__":
