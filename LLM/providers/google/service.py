@@ -31,21 +31,8 @@ class LLMService:
         
         return contents
 
-    def summarize(self, input_str: str) -> str:
-        """Summarizes a PDF file or text input using SUMMARIZATION_PROMPT."""
-        print("DEBUG: Summarizing document...")
-        contents = self._process_input(input_str, SUMMARIZATION_PROMPT)
-
-        response = self.client.models.generate_content(
-            model=self.model,
-            config=types.GenerateContentConfig(system_instruction=SUMMARIZATION_PROMPT),
-            contents=contents
-        )
-        print("DEBUG: Gemini API summary response:", response.text)
-        return response.text
-
     def generate_metadata(self, input_str: str) -> dict:
-        """Extracts metadata (title, authors, date, tags) from a PDF or text."""
+        """Extracts metadata (title, authors, date, tags) from a PDF or text input."""
         print("DEBUG: Extracting metadata...")
         contents = self._process_input(input_str, METADATA_PROMPT)
 
@@ -54,10 +41,23 @@ class LLMService:
             config=types.GenerateContentConfig(system_instruction=METADATA_PROMPT),
             contents=contents
         )
-        print("DEBUG: Gemini API metadata response:", response.text)
+
+        if not response or not response.text.strip():
+            raise Exception("Gemini API returned an empty response for metadata extraction.")
+
+        raw_text = response.text.strip()
+        print("DEBUG: Gemini API metadata raw response:", raw_text)
+
+        # Sanitize Gemini API response if wrapped in ```json ... ```
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[len("```json"):].strip()
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3].strip()
 
         try:
-            metadata = json.loads(response.text)  # Ensure valid JSON
-            return metadata
+            metadata = json.loads(raw_text)  # Ensure it's valid JSON
         except json.JSONDecodeError as e:
-            raise Exception(f"Failed to parse metadata JSON: {e}")
+            raise Exception(f"Failed to parse metadata JSON: {e}. Raw response: {raw_text}")
+
+        return metadata
+

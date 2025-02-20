@@ -270,8 +270,9 @@ async def upload_pdf(file: UploadFile = File(...)):
     try:
         metadata = llm_service.generate_metadata(pdf_path)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to extract metadata: {e}")
-    
+        print(f"ERROR: Failed to extract metadata. {e}")
+        raise HTTPException(status_code=500, detail=f"Metadata extraction failed: {e}")
+
     # Ensure expected metadata fields exist
     new_doc = {
         "id": doc_id,
