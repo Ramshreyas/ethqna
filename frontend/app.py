@@ -57,12 +57,10 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-# --- New Endpoint: Return JSON for PDF documents ---
 @app.route("/documents")
 def documents_list():
-    # Assumes the JSON file is stored at data/pdf_sources/documents.json
     documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
-    print("Documents path:", documents_path)
+    print("Looking for documents.json at:", documents_path, flush=True)
     if os.path.exists(documents_path):
         try:
             with open(documents_path, 'r') as f:
@@ -72,6 +70,7 @@ def documents_list():
             return jsonify({"documents": [], "error": f"Failed to load documents: {e}"}), 500
     else:
         return jsonify({"documents": []})
+
 
 # --- Main Application Routes ---
 @app.route("/")
