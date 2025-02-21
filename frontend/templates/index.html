@@ -122,11 +122,8 @@
   <header>
     <div class="header-left">ETH QnA</div>
     <div class="header-right">
-      <!-- Display logged-in user's profile info and a logout button -->
-      <span>Logged in as {{ user.name or user.email }}</span>
-      <a href="{{ url_for('logout') }}">Logout</a>
-      <a href="#">About</a>
-      <a href="#">Contact Us</a>
+      <!-- Display logged-in user's profile info for logout -->
+      <a href="{{ url_for('logout') }}">{{ user.name or user.email }}</a>
     </div>
   </header>
   
