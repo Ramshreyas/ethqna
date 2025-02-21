@@ -192,30 +192,30 @@
         console.error("Error fetching documents:", error);
       });
 
-    function populateTabs(documents) {
-      var tabsContainer = document.getElementById("pdf-tabs");
-      tabsContainer.innerHTML = "";  // Clear any existing tabs.
-      documents.forEach(function(doc, index) {
-        var tab = document.createElement("div");
-        tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use a short snippet from the description as the tab title.
-        tab.textContent = doc.description.split(".")[0];
-        tab.setAttribute("data-pdf-file", doc.pdf_file);
-        tab.onclick = function() {
-          // Remove active class from all tabs.
-          var tabs = document.getElementsByClassName("tab");
-          for (var i = 0; i < tabs.length; i++) {
-            tabs[i].classList.remove("active");
-          }
-          // Set this tab as active.
-          this.classList.add("active");
-          // Update the PDF viewer with the selected document.
-          var pdfViewer = document.getElementById("pdf-viewer");
-          pdfViewer.src = "/pdf?doc=" + this.getAttribute("data-pdf-file");
-        };
-        tabsContainer.appendChild(tab);
-      });
-    }
+      function populateTabs(documents) {
+        var tabsContainer = document.getElementById("pdf-tabs");
+        tabsContainer.innerHTML = "";  // Clear any existing tabs.
+        documents.forEach(function(doc, index) {
+          var tab = document.createElement("div");
+          tab.className = "tab" + (index === 0 ? " active" : "");
+          // Use the title if available, otherwise use a snippet from the description.
+          tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
+          tab.setAttribute("data-pdf-file", doc.pdf_file);
+          tab.onclick = function() {
+            // Remove active class from all tabs.
+            var tabs = document.getElementsByClassName("tab");
+            for (var i = 0; i < tabs.length; i++) {
+              tabs[i].classList.remove("active");
+            }
+            // Set this tab as active.
+            this.classList.add("active");
+            // Update the PDF viewer with the selected document.
+            var pdfViewer = document.getElementById("pdf-viewer");
+            pdfViewer.src = "/pdf?doc=" + this.getAttribute("data-pdf-file");
+          };
+          tabsContainer.appendChild(tab);
+        });
+      }
 
     document.getElementById('message-input').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
