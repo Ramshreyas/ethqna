@@ -164,7 +164,7 @@
 
     <!-- PDF Panel -->
     <div class="pdf-panel">
-      <iframe id="pdf-viewer" src="/pdf?doc=41dd8407-7914-4978-a078-8dc597d8fb86.pdf" width="100%" height="100%"></iframe>
+      <iframe id="pdf-viewer" src="" width="100%" height="100%"></iframe>
     </div>
   </div>
 
@@ -195,7 +195,7 @@
       documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available.
+        // Use the title if available; otherwise use a snippet from the description.
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
@@ -248,14 +248,19 @@
         botMessageDiv.classList.add('chat-message', 'bot');
         // Render markdown using Marked.
         botMessageDiv.innerHTML = marked.parse(data.response);
-        chatMessages.appendChild(botMessageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        // If a page number is returned, update the PDF viewer's fragment.
+        // If a page number is returned, append it to the message.
         if (data.page) {
+          var activeTab = document.querySelector('.tab.active');
+          if (activeTab) {
+            botMessageDiv.innerHTML += "<br><strong>Document:</strong> " + activeTab.textContent;
+          }
+          // Update the PDF viewer to scroll to the page.
           var pdfViewer = document.getElementById("pdf-viewer");
           var currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
         }
+        chatMessages.appendChild(botMessageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       })
       .catch(error => {
         console.error("Error:", error);
