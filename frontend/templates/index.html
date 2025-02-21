@@ -27,6 +27,14 @@
       font-size: 24px;
       font-weight: bold;
     }
+    header .header-right {
+      display: flex;
+      align-items: center;
+    }
+    header .header-right span {
+      margin-right: 15px;
+      font-size: 16px;
+    }
     header .header-right a {
       color: #fff;
       text-decoration: none;
@@ -114,6 +122,9 @@
   <header>
     <div class="header-left">ETH QnA</div>
     <div class="header-right">
+      <!-- Display logged-in user's profile info and a logout button -->
+      <span>Logged in as {{ user.name or user.email }}</span>
+      <a href="{{ url_for('logout') }}">Logout</a>
       <a href="#">About</a>
       <a href="#">Contact Us</a>
     </div>
