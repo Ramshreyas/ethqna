@@ -44,6 +44,24 @@
     header .header-right a:hover {
       text-decoration: underline;
     }
+    /* Tabs container styling */
+    .tabs {
+      display: flex;
+      background: #eee;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 8px 16px;
+      margin-right: 5px;
+      background: #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tab.active {
+      background: #bbb;
+    }
     .container {
       display: flex;
       flex: 1;
@@ -122,10 +140,17 @@
   <header>
     <div class="header-left">ETH QnA</div>
     <div class="header-right">
-      <!-- Display logged-in user's profile info for logout -->
-      <a href="{{ url_for('logout') }}">{{ user.name or user.email }} ⏏️</a>
+      <span>Logged in as {{ user.name or user.email }}</span>
+      <a href="{{ url_for('logout') }}">Logout</a>
+      <a href="#">About</a>
+      <a href="#">Contact Us</a>
     </div>
   </header>
+  
+  <!-- Tabs for PDF documents -->
+  <div class="tabs" id="pdf-tabs">
+    <!-- Tabs will be populated here from /documents -->
+  </div>
   
   <div class="container">
     <!-- Chat Panel -->
@@ -142,7 +167,7 @@
 
     <!-- PDF Panel -->
     <div class="pdf-panel">
-      <iframe id="pdf-viewer" src="/pdf" width="100%" height="100%"></iframe>
+      <iframe id="pdf-viewer" src="/pdf?doc=41dd8407-7914-4978-a078-8dc597d8fb86.pdf" width="100%" height="100%"></iframe>
     </div>
   </div>
 
@@ -151,6 +176,48 @@
   </footer>
 
   <script>
+    // Function to populate PDF tabs from fetched JSON.
+    function populateTabs(pdfDocuments) {
+      var tabsContainer = document.getElementById("pdf-tabs");
+      tabsContainer.innerHTML = "";  // Clear any existing tabs.
+      pdfDocuments.documents.forEach(function(doc, index) {
+        var tab = document.createElement("div");
+        tab.className = "tab" + (index === 0 ? " active" : "");
+        // Use a short snippet from the description for the tab title.
+        tab.textContent = doc.description.split(".")[0];
+        tab.setAttribute("data-pdf-file", doc.pdf_file);
+        tab.onclick = function() {
+          // Remove active class from all tabs.
+          var tabs = document.getElementsByClassName("tab");
+          for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.remove("active");
+          }
+          // Set this tab as active.
+          this.classList.add("active");
+          // Update the PDF viewer with the selected document.
+          var pdfViewer = document.getElementById("pdf-viewer");
+          pdfViewer.src = "/pdf?doc=" + this.getAttribute("data-pdf-file");
+        };
+        tabsContainer.appendChild(tab);
+      });
+    }
+
+    // Fetch the documents JSON from the backend endpoint.
+    fetch("/documents")
+      .then(response => response.json())
+      .then(data => {
+        if(data.documents && data.documents.length > 0) {
+          populateTabs(data);
+          // Set the PDF viewer to the first document by default.
+          document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
+        } else {
+          document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching documents:", error);
+      });
+
     document.getElementById('message-input').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         sendMessage();
@@ -188,7 +255,7 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
         if (data.page) {
           const pdfViewer = document.getElementById('pdf-viewer');
-          pdfViewer.src = '/pdf#page=' + data.page;
+          pdfViewer.src = "/pdf?doc=" + data.page;
         }
       })
       .catch(error => {

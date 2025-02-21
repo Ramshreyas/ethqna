@@ -57,8 +57,22 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-# --- Main Application Routes ---
+# --- New Endpoint: Return JSON for PDF documents ---
+@app.route("/documents")
+def documents_list():
+    # Assumes the JSON file is stored at data/pdf_sources/documents.json
+    documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
+    if os.path.exists(documents_path):
+        try:
+            with open(documents_path, 'r') as f:
+                documents_json = json.load(f)
+            return jsonify(documents_json)
+        except Exception as e:
+            return jsonify({"documents": [], "error": f"Failed to load documents: {e}"}), 500
+    else:
+        return jsonify({"documents": []})
 
+# --- Main Application Routes ---
 @app.route("/")
 def index():
     # If the user is not authorized via Google, render the login page.
@@ -67,25 +81,20 @@ def index():
     try:
         resp = google.get("/oauth2/v2/userinfo")
     except TokenExpiredError:
-        # Token expired; redirect to login to refresh it.
         return redirect(url_for("google.login"))
     except Exception:
-        # Any other error: redirect to login.
         return redirect(url_for("google.login"))
     if not resp.ok:
-        # Force a re-login if userinfo cannot be retrieved.
         return redirect(url_for("google.login"))
     user_info = resp.json()
     email = user_info.get("email", "")
     # Allow only ethereum.org accounts.
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
-    # User is authenticated; render the main page.
     return render_template("index.html", user=user_info)
 
 @app.route("/logout")
 def logout():
-    # Clear the OAuth token to log out.
     if google_bp.token:
         del google_bp.token
     return redirect(url_for("index"))
@@ -148,8 +157,9 @@ def chat():
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    filename = '41dd8407-7914-4978-a078-8dc597d8fb86.pdf'
-    return send_from_directory(directory, filename)
+    # Use query parameter 'doc' to select a PDF; default to a specific file.
+    pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
+    return send_from_directory(directory, pdf_file)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
