@@ -158,6 +158,7 @@ def chat():
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
+    print("Directory:", directory)
     # Use query parameter 'doc' to select a PDF; default to a specific file.
     pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     return send_from_directory(directory, pdf_file)
