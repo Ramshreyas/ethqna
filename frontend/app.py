@@ -62,6 +62,7 @@ app.register_blueprint(google_bp, url_prefix="/login")
 def documents_list():
     # Assumes the JSON file is stored at data/pdf_sources/documents.json
     documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
+    print("Documents path:", documents_path)
     if os.path.exists(documents_path):
         try:
             with open(documents_path, 'r') as f:
