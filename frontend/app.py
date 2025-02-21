@@ -27,9 +27,8 @@ load_dotenv(dotenv_path)
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
 
-# Force Flask to generate HTTPS URLs
+# Force Flask to generate HTTPS URLs and trust reverse-proxy headers.
 app.config['PREFERRED_URL_SCHEME'] = 'https'
-# Use ProxyFix to trust reverse proxy headers
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Load configuration for Gemini API from config/config.yaml
@@ -57,20 +56,23 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
+# --- New Endpoint for PDF Documents ---
 @app.route("/documents")
 def documents_list():
+    # Compute the full path to documents.json.
     documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
     print("Looking for documents.json at:", documents_path, flush=True)
     if os.path.exists(documents_path):
         try:
             with open(documents_path, 'r') as f:
-                documents_json = json.load(f)
-            return jsonify(documents_json)
+                docs_dict = json.load(f)
+            # Convert the dictionary to a list (and sort by relevance descending, if available).
+            docs_list = sorted(list(docs_dict.values()), key=lambda d: d.get("relevance", 0), reverse=True)
+            return jsonify({"documents": docs_list})
         except Exception as e:
             return jsonify({"documents": [], "error": f"Failed to load documents: {e}"}), 500
     else:
         return jsonify({"documents": []})
-
 
 # --- Main Application Routes ---
 @app.route("/")
@@ -101,11 +103,10 @@ def logout():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    # At this point, we assume the user is authenticated via Google.
     data = request.get_json()
     user_message = data.get("message", "")
 
-    # Read the PDF file.
+    # Read the default PDF file (this can later be dynamic based on the selected document).
     pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     try:
         with open(pdf_path, 'rb') as f:
@@ -157,8 +158,7 @@ def chat():
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    print("Directory:", directory)
-    # Use query parameter 'doc' to select a PDF; default to a specific file.
+    # Use query parameter 'doc' to select a PDF file; default if not provided.
     pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     return send_from_directory(directory, pdf_file)
 

@@ -176,14 +176,29 @@
   </footer>
 
   <script>
-    // Function to populate PDF tabs from fetched JSON.
-    function populateTabs(pdfDocuments) {
+    // Fetch the documents JSON from the /documents endpoint and populate tabs.
+    fetch("/documents")
+      .then(response => response.json())
+      .then(data => {
+        if (data.documents && data.documents.length > 0) {
+          populateTabs(data.documents);
+          // Preselect the first document by setting the iframe src.
+          document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
+        } else {
+          document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching documents:", error);
+      });
+
+    function populateTabs(documents) {
       var tabsContainer = document.getElementById("pdf-tabs");
       tabsContainer.innerHTML = "";  // Clear any existing tabs.
-      pdfDocuments.documents.forEach(function(doc, index) {
+      documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use a short snippet from the description for the tab title.
+        // Use a short snippet from the description as the tab title.
         tab.textContent = doc.description.split(".")[0];
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
@@ -201,22 +216,6 @@
         tabsContainer.appendChild(tab);
       });
     }
-
-    // Fetch the documents JSON from the backend endpoint.
-    fetch("/documents")
-      .then(response => response.json())
-      .then(data => {
-        if(data.documents && data.documents.length > 0) {
-          populateTabs(data);
-          // Set the PDF viewer to the first document by default.
-          document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
-        } else {
-          document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
-        }
-      })
-      .catch(error => {
-        console.error("Error fetching documents:", error);
-      });
 
     document.getElementById('message-input').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
