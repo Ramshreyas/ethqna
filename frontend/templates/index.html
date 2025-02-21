@@ -30,16 +30,15 @@
     header .header-right {
       display: flex;
       align-items: center;
+      font-size: 16px;
     }
     header .header-right span {
-      margin-right: 15px;
-      font-size: 16px;
+      margin-right: 10px;
     }
     header .header-right a {
       color: #fff;
       text-decoration: none;
-      margin-left: 15px;
-      font-size: 16px;
+      font-size: 20px;
     }
     header .header-right a:hover {
       text-decoration: underline;
@@ -140,10 +139,8 @@
   <header>
     <div class="header-left">ETH QnA</div>
     <div class="header-right">
-      <span>Logged in as {{ user.name or user.email }}</span>
-      <a href="{{ url_for('logout') }}">Logout</a>
-      <a href="#">About</a>
-      <a href="#">Contact Us</a>
+      <span>{{ user.name or user.email }}</span>
+      <a href="{{ url_for('logout') }}">⏏</a>
     </div>
   </header>
   
@@ -167,7 +164,6 @@
 
     <!-- PDF Panel -->
     <div class="pdf-panel">
-      <!-- Initially, the iframe src is set by the tabs fetch. -->
       <iframe id="pdf-viewer" src="/pdf?doc=41dd8407-7914-4978-a078-8dc597d8fb86.pdf" width="100%" height="100%"></iframe>
     </div>
   </div>
@@ -199,7 +195,7 @@
       documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available, otherwise a snippet from description.
+        // Use the title if available.
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
@@ -212,7 +208,6 @@
           this.classList.add("active");
           // Update the PDF viewer with the selected document.
           var pdfViewer = document.getElementById("pdf-viewer");
-          // Remove any fragment (page indicator) before updating.
           var baseUrl = "/pdf?doc=" + this.getAttribute("data-pdf-file");
           pdfViewer.src = baseUrl;
         };
@@ -255,10 +250,9 @@
         botMessageDiv.innerHTML = marked.parse(data.response);
         chatMessages.appendChild(botMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        // If a page number is returned, update the PDF viewer fragment to scroll.
+        // If a page number is returned, update the PDF viewer's fragment.
         if (data.page) {
           var pdfViewer = document.getElementById("pdf-viewer");
-          // Extract the base URL (without any fragment)
           var currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
         }
