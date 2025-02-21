@@ -246,19 +246,22 @@
         spinner.style.display = 'none';
         const botMessageDiv = document.createElement('div');
         botMessageDiv.classList.add('chat-message', 'bot');
-        // Render markdown using Marked.
-        botMessageDiv.innerHTML = marked.parse(data.response);
-        // If a page number is returned, append it to the message.
+        
+        let docInfoLine = "";
         if (data.page) {
           var activeTab = document.querySelector('.tab.active');
           if (activeTab) {
-            botMessageDiv.innerHTML += "<br><strong>Document:</strong> " + activeTab.textContent;
+            // Prepend the document info at the top
+            docInfoLine = "<strong>From:</strong> " + activeTab.textContent + " (Page " + data.page + ")<br>";
           }
-          // Update the PDF viewer to scroll to the page.
+          // Update the PDF viewer to scroll to the specified page.
           var pdfViewer = document.getElementById("pdf-viewer");
           var currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
         }
+        
+        // Prepend the document info line to the bot response.
+        botMessageDiv.innerHTML = docInfoLine + marked.parse(data.response);
         chatMessages.appendChild(botMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       })
