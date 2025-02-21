@@ -167,6 +167,7 @@
 
     <!-- PDF Panel -->
     <div class="pdf-panel">
+      <!-- Initially, the iframe src is set by the tabs fetch. -->
       <iframe id="pdf-viewer" src="/pdf?doc=41dd8407-7914-4978-a078-8dc597d8fb86.pdf" width="100%" height="100%"></iframe>
     </div>
   </div>
@@ -198,7 +199,7 @@
       documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available, otherwise use a snippet from the description.
+        // Use the title if available, otherwise a snippet from description.
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
@@ -211,7 +212,9 @@
           this.classList.add("active");
           // Update the PDF viewer with the selected document.
           var pdfViewer = document.getElementById("pdf-viewer");
-          pdfViewer.src = "/pdf?doc=" + this.getAttribute("data-pdf-file");
+          // Remove any fragment (page indicator) before updating.
+          var baseUrl = "/pdf?doc=" + this.getAttribute("data-pdf-file");
+          pdfViewer.src = baseUrl;
         };
         tabsContainer.appendChild(tab);
       });
@@ -252,7 +255,13 @@
         botMessageDiv.innerHTML = marked.parse(data.response);
         chatMessages.appendChild(botMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        // Do not update the PDF viewer here—its content is controlled by the selected tab.
+        // If a page number is returned, update the PDF viewer fragment to scroll.
+        if (data.page) {
+          var pdfViewer = document.getElementById("pdf-viewer");
+          // Extract the base URL (without any fragment)
+          var currentUrl = pdfViewer.src.split("#")[0];
+          pdfViewer.src = currentUrl + "#page=" + data.page;
+        }
       })
       .catch(error => {
         console.error("Error:", error);
