@@ -146,8 +146,9 @@
       left: 0;
       width: 250px;
       height: 100%;
-      background: #f9f9f9;
-      border: 1px solid #ccc;
+      background: #333; /* Dark background */
+      color: #eee; /* Light text */
+      border: 1px solid #555;
       border-right: none;
       box-sizing: border-box;
       z-index: 10;
@@ -165,8 +166,8 @@
       top: 50%;
       right: -15px;
       transform: translateY(-50%);
-      background: #ccc;
-      border: 1px solid #ccc;
+      background: #555;
+      border: 1px solid #555;
       border-left: none;
       width: 30px;
       height: 30px;
@@ -175,12 +176,13 @@
       cursor: pointer;
       user-select: none;
       font-weight: bold;
+      color: #eee;
     }
     /* Styling for panel title */
     .panel-title {
       margin-bottom: 10px;
       font-size: 18px;
-      border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid #555;
       padding-bottom: 5px;
     }
     /* Styling for topic panel elements */
@@ -197,10 +199,16 @@
       width: 100%;
       padding: 5px;
       box-sizing: border-box;
+      border: 1px solid #555;
+      background: #444;
+      color: #eee;
     }
     .topic-panel button {
       padding: 5px 10px;
       cursor: pointer;
+      border: none;
+      background: #555;
+      color: #eee;
     }
     /* Checkbox group styling for sources */
     .checkbox-group label {
@@ -208,19 +216,22 @@
       margin-bottom: 5px;
       cursor: pointer;
     }
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 5px;
+    }
     /* Divider styling */
     .divider {
       border: 0;
-      border-top: 1px solid #ccc;
+      border-top: 1px solid #555;
       margin: 10px 0;
     }
     /* Document list styling */
     .document-list {
       max-height: 200px;
       overflow-y: auto;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       padding: 5px;
-      background: #fff;
+      background: #444;
     }
     .document-list label {
       display: block;
