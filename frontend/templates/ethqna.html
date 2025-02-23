@@ -139,7 +139,7 @@
       background: #333;
       color: #fff;
       text-align: center;
-      padding: 10px 20px;
+      padding: 5px 20px; /* Reduced vertical padding */
       font-size: 14px;
     }
     /* Left panel styling – absolutely positioned over .main-content */
@@ -334,7 +334,6 @@
     function toggleLeftPanel() {
       var panel = document.getElementById("left-panel");
       var toggleBtn = document.getElementById("panel-toggle");
-      // Always keep content-container flush with the left edge.
       document.getElementById("content-container").style.marginLeft = "0px";
       if (panel.classList.contains("hidden")) {
         panel.classList.remove("hidden");
@@ -416,17 +415,14 @@
       const input = document.getElementById('message-input');
       const message = input.value.trim();
       if (message === '') return;
-
       const chatMessages = document.getElementById('chat-messages');
       const userMessageDiv = document.createElement('div');
       userMessageDiv.classList.add('chat-message', 'user');
       userMessageDiv.textContent = "User: " + message;
       chatMessages.appendChild(userMessageDiv);
       input.value = '';
-
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
-
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
