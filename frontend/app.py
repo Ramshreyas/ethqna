@@ -74,6 +74,11 @@ def documents_list():
     else:
         return jsonify({"documents": []})
 
+# --- New Endpoint for ethqna Template ---
+@app.route("/ethqna")
+def ethqna():
+    return render_template("ethqna.html")
+
 # --- Main Application Routes ---
 @app.route("/")
 def index():

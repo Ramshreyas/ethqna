@@ -142,7 +142,8 @@
       <span>{{ user.name or user.email }}</span>
       <a href="{{ url_for('logout') }}"> ⏏ &nbsp;</a>
       <span> | </span>
-      <a href="{{ url_for('static', filename='ethqna.html') }}"> 🐰 </a>
+      <!-- Updated link to point to the /ethqna endpoint -->
+      <a href="{{ url_for('ethqna') }}"> 🐰 </a>
     </div>
   </header>
   
@@ -182,7 +183,6 @@
     </p>
   </footer>
   
-
   <script>
     // Fetch the documents JSON from the /documents endpoint and populate tabs.
     fetch("/documents")
