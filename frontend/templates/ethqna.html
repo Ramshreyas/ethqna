@@ -73,6 +73,7 @@
       flex: 1;
       min-height: 0;
       transition: margin-left 0.3s ease-in-out;
+      margin-left: 0; /* Always flush */
     }
     .chat-panel {
       flex: 1;
@@ -80,6 +81,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      padding: 0; /* Remove any padding */
+      margin: 0;
     }
     .pdf-panel {
       flex: 1;
@@ -148,18 +151,16 @@
       height: 100%;
       background: #333; /* Dark background */
       color: #eee; /* Light text */
-      /* Reduced border thickness (or removed) */
-      border: 0; 
-      /* If you prefer a subtle line, you could use: border: 1px solid #333; */
+      border: 0; /* No border */
       box-sizing: border-box;
       z-index: 10;
       transition: transform 0.3s ease-in-out;
       transform: translateX(0);
       padding: 15px;
     }
-    /* When hidden, slide nearly offscreen (leaving about 20px visible) */
+    /* When hidden, slide nearly offscreen (leaving minimal visible area) */
     .left-panel.hidden {
-      transform: translateX(-230px);
+      transform: translateX(-250px);
     }
     /* Toggle button placed on the vertical center of the panel's right edge */
     .panel-toggle {
@@ -168,8 +169,7 @@
       right: -15px;
       transform: translateY(-50%);
       background: #333;
-      /* Remove border or set it to 0 */
-      border: 0; 
+      border: 0;
       width: 30px;
       height: 30px;
       line-height: 30px;
@@ -226,7 +226,7 @@
       border-top: 1px solid #555;
       margin: 10px 0;
     }
-    /* Document list styling: removed box styling to match the sources */
+    /* Document list styling: now similar to the sources checkbox group */
     .document-list {
       max-height: 200px;
       overflow-y: auto;
@@ -237,7 +237,6 @@
       cursor: pointer;
     }
   </style>
-  <!-- Include Marked library for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -249,16 +248,12 @@
     </div>
   </header>
   
-  <!-- Main content wraps both the document tabs and the panels below -->
   <div class="main-content">
-    <!-- Tabs for PDF documents (remains horizontal) -->
     <div class="tabs" id="pdf-tabs">
       <!-- Tabs will be populated here from /documents -->
     </div>
     
-    <!-- Container for chat and PDF panels -->
     <div class="container" id="content-container">
-      <!-- Chat Panel -->
       <div class="chat-panel">
         <div class="chat-messages" id="chat-messages">
           <!-- Greeting message will be inserted here on page load -->
@@ -270,15 +265,12 @@
         </div>
       </div>
       
-      <!-- PDF Panel -->
       <div class="pdf-panel">
         <iframe id="pdf-viewer" src="" width="100%" height="100%"></iframe>
       </div>
     </div>
     
-    <!-- Left Panel (Overlay) for Topic Selection -->
     <div id="left-panel" class="left-panel">
-      <!-- Toggle button on the panel's right edge -->
       <div id="panel-toggle" class="panel-toggle" onclick="toggleLeftPanel()"><<</div>
       
       <h2 class="panel-title">What would you like to research?</h2>
@@ -318,7 +310,6 @@
       <div class="topic-panel">
         <label>Documents:</label>
         <div class="document-list" id="document-list">
-          <!-- Dummy checkbox list for documents -->
           <label><input type="checkbox" value="doc1"> Document 1</label>
           <label><input type="checkbox" value="doc2"> Document 2</label>
           <label><input type="checkbox" value="doc3"> Document 3</label>
@@ -340,25 +331,21 @@
   </footer>
 
   <script>
-    // Toggle the left panel's visibility and adjust the container margin accordingly.
     function toggleLeftPanel() {
       var panel = document.getElementById("left-panel");
       var toggleBtn = document.getElementById("panel-toggle");
-      var container = document.getElementById("content-container");
+      // Always keep content-container flush with the left edge.
+      document.getElementById("content-container").style.marginLeft = "0px";
       if (panel.classList.contains("hidden")) {
         panel.classList.remove("hidden");
         toggleBtn.innerHTML = "<<";
-        container.style.marginLeft = "0px";
       } else {
         panel.classList.add("hidden");
         toggleBtn.innerHTML = ">>";
-        container.style.marginLeft = "30px"; // Increase left margin so content isn't overlapped.
       }
     }
 
-    // Dummy submit function for topic selection.
     function submitTopic() {
-      // Gather selected sources from checkboxes.
       var checkboxes = document.querySelectorAll('input[name="sources"]:checked');
       var selectedSources = Array.from(checkboxes).map(cb => cb.value);
       var topic = document.getElementById("topic-input").value;
@@ -367,13 +354,11 @@
       // Functionality to filter and rank documents will be implemented later.
     }
 
-    // Fetch the documents JSON from the /documents endpoint and populate tabs.
     fetch("/documents")
       .then(response => response.json())
       .then(data => {
         if (data.documents && data.documents.length > 0) {
           populateTabs(data.documents);
-          // Preselect the first document by setting the iframe src.
           document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
         } else {
           document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
@@ -404,7 +389,6 @@
       });
     }
 
-    // Prepopulate chat with a greeting when the page loads.
     window.onload = function() {
       var greeting = 
         "Hello! I'm your friendly research assistant.\n" +
