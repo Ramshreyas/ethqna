@@ -60,21 +60,12 @@
     .tab.active {
       background: #bbb;
     }
+    /* Container for chat and PDF panels */
     .container {
       display: flex;
       flex: 1;
       min-height: 0;
-    }
-    /* New left panel styling */
-    .left-panel {
-      width: 250px;
-      background: #f1f1f1;
-      border-right: 1px solid #ccc;
-      padding: 15px;
-      box-sizing: border-box;
-    }
-    .left-panel.hidden {
-      display: none;
+      position: relative;
     }
     .chat-panel {
       flex: 1;
@@ -141,6 +132,43 @@
       padding: 10px 20px;
       font-size: 14px;
     }
+    /* Left panel styling – now absolutely positioned over the container */
+    .left-panel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100%;
+      background: #f1f1f1;
+      border-right: 1px solid #ccc;
+      box-sizing: border-box;
+      z-index: 10;
+      transition: transform 0.3s ease-in-out;
+      /* Initially visible */
+      transform: translateX(0);
+      padding: 15px;
+    }
+    /* When hidden, slide nearly offscreen (leaving a 20px vertical strip) */
+    .left-panel.hidden {
+      transform: translateX(-230px);
+    }
+    /* Toggle button placed on the vertical center of the panel's right border */
+    .panel-toggle {
+      position: absolute;
+      top: 50%;
+      right: -15px;
+      transform: translateY(-50%);
+      background: #ccc;
+      border: 1px solid #ccc;
+      border-left: none;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      font-weight: bold;
+    }
     /* Styling for topic panel elements */
     .topic-panel {
       margin-bottom: 20px;
@@ -173,13 +201,6 @@
       display: block;
       margin-bottom: 5px;
     }
-    .toggle-btn {
-      background: #ccc;
-      border: none;
-      padding: 5px 10px;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
   </style>
   <!-- Include Marked library for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -198,10 +219,30 @@
     <!-- Tabs will be populated here from /documents -->
   </div>
   
+  <!-- Main container for chat and PDF panels -->
   <div class="container">
-    <!-- New Left Panel for Topic Selection -->
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <div class="chat-messages" id="chat-messages">
+        <!-- The greeting message will be inserted here on page load -->
+      </div>
+      <div class="chat-input">
+        <input type="text" id="message-input" placeholder="Type your message..." />
+        <button onclick="sendMessage()">Send</button>
+        <div class="spinner" id="spinner"></div>
+      </div>
+    </div>
+
+    <!-- PDF Panel -->
+    <div class="pdf-panel">
+      <iframe id="pdf-viewer" src="" width="100%" height="100%"></iframe>
+    </div>
+
+    <!-- Left Panel (Overlay) for Topic Selection -->
     <div id="left-panel" class="left-panel">
-      <button class="toggle-btn" onclick="toggleLeftPanel()">Hide Panel</button>
+      <!-- Toggle button on the panel's right edge -->
+      <div id="panel-toggle" class="panel-toggle" onclick="toggleLeftPanel()"><<</div>
+      
       <div class="topic-panel">
         <label for="sources">Select Sources:</label>
         <select id="sources" multiple>
@@ -227,23 +268,6 @@
         </div>
       </div>
     </div>
-    
-    <!-- Chat Panel -->
-    <div class="chat-panel">
-      <div class="chat-messages" id="chat-messages">
-        <!-- The greeting message will be inserted here on page load -->
-      </div>
-      <div class="chat-input">
-        <input type="text" id="message-input" placeholder="Type your message..." />
-        <button onclick="sendMessage()">Send</button>
-        <div class="spinner" id="spinner"></div>
-      </div>
-    </div>
-
-    <!-- PDF Panel -->
-    <div class="pdf-panel">
-      <iframe id="pdf-viewer" src="" width="100%" height="100%"></iframe>
-    </div>
   </div>
 
   <footer>
@@ -259,13 +283,20 @@
   </footer>
 
   <script>
-    // Toggle visibility of the left panel
+    // Toggle the left panel's visibility by toggling the "hidden" class.
     function toggleLeftPanel() {
-      var leftPanel = document.getElementById("left-panel");
-      leftPanel.classList.toggle("hidden");
+      var panel = document.getElementById("left-panel");
+      var toggleBtn = document.getElementById("panel-toggle");
+      if (panel.classList.contains("hidden")) {
+        panel.classList.remove("hidden");
+        toggleBtn.innerHTML = "<<";
+      } else {
+        panel.classList.add("hidden");
+        toggleBtn.innerHTML = ">>";
+      }
     }
 
-    // Dummy submit function for topic selection
+    // Dummy submit function for topic selection.
     function submitTopic() {
       var sources = document.getElementById("sources");
       var selectedSources = Array.from(sources.selectedOptions).map(option => option.value);
