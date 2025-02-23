@@ -134,7 +134,6 @@
   </style>
   <!-- Include Marked library for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <a href="{{ url_for('static', filename='ethqna.html') }}">🐰</a>
 </head>
 <body>
   <header>
@@ -142,6 +141,7 @@
     <div class="header-right">
       <span>{{ user.name or user.email }}</span>
       <a href="{{ url_for('logout') }}">⏏</a>
+      <a href="{{ url_for('static', filename='ethqna.html') }}">🐰</a>
     </div>
   </header>
   
