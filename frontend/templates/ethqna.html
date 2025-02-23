@@ -54,7 +54,7 @@
       background: #eee;
       padding: 10px;
       overflow-x: auto;
-      display: flex; /* Ensure horizontal layout */
+      display: flex; /* Horizontal layout */
     }
     .tab {
       padding: 8px 16px;
@@ -146,8 +146,9 @@
       left: 0;
       width: 250px;
       height: 100%;
-      background: #f1f1f1;
-      border-right: 1px solid #ccc;
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      border-right: none;
       box-sizing: border-box;
       z-index: 10;
       transition: transform 0.3s ease-in-out;
@@ -175,27 +176,45 @@
       user-select: none;
       font-weight: bold;
     }
+    /* Styling for panel title */
+    .panel-title {
+      margin-bottom: 10px;
+      font-size: 18px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
     /* Styling for topic panel elements */
     .topic-panel {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .topic-panel label {
       display: block;
       margin-bottom: 5px;
       font-weight: bold;
     }
-    .topic-panel select, 
-    .topic-panel input[type="text"] {
+    .topic-panel input[type="text"],
+    .topic-panel input[type="number"] {
       width: 100%;
       padding: 5px;
-      margin-bottom: 10px;
       box-sizing: border-box;
     }
     .topic-panel button {
       padding: 5px 10px;
-      margin-bottom: 10px;
       cursor: pointer;
     }
+    /* Checkbox group styling for sources */
+    .checkbox-group label {
+      display: block;
+      margin-bottom: 5px;
+      cursor: pointer;
+    }
+    /* Divider styling */
+    .divider {
+      border: 0;
+      border-top: 1px solid #ccc;
+      margin: 10px 0;
+    }
+    /* Document list styling */
     .document-list {
       max-height: 200px;
       overflow-y: auto;
@@ -252,21 +271,40 @@
       <!-- Toggle button on the panel's right edge -->
       <div id="panel-toggle" class="panel-toggle" onclick="toggleLeftPanel()"><<</div>
       
+      <h2 class="panel-title">What would you like to research?</h2>
+      
       <div class="topic-panel">
-        <label for="sources">Select Sources:</label>
-        <select id="sources" multiple>
-          <option value="source1">Source 1</option>
-          <option value="source2">Source 2</option>
-          <option value="source3">Source 3</option>
-        </select>
+        <label>Sources:</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="sources" value="source1"> Source 1</label>
+          <label><input type="checkbox" name="sources" value="source2"> Source 2</label>
+          <label><input type="checkbox" name="sources" value="source3"> Source 3</label>
+        </div>
       </div>
+      
+      <hr class="divider">
+      
       <div class="topic-panel">
         <label for="topic-input">Topic:</label>
         <input type="text" id="topic-input" placeholder="Enter topic...">
       </div>
+      
+      <hr class="divider">
+      
+      <div class="topic-panel">
+        <label for="doc-count">Return 
+          <input type="number" id="doc-count" value="3" min="1" style="width: 50px;"> documents
+        </label>
+      </div>
+      
+      <hr class="divider">
+      
       <div class="topic-panel">
         <button id="topic-submit" onclick="submitTopic()">Submit</button>
       </div>
+      
+      <hr class="divider">
+      
       <div class="topic-panel">
         <label>Documents:</label>
         <div class="document-list" id="document-list">
@@ -310,10 +348,12 @@
 
     // Dummy submit function for topic selection.
     function submitTopic() {
-      var sources = document.getElementById("sources");
-      var selectedSources = Array.from(sources.selectedOptions).map(option => option.value);
+      // Gather selected sources from checkboxes.
+      var checkboxes = document.querySelectorAll('input[name="sources"]:checked');
+      var selectedSources = Array.from(checkboxes).map(cb => cb.value);
       var topic = document.getElementById("topic-input").value;
-      console.log("Selected Sources:", selectedSources, "Topic:", topic);
+      var docCount = document.getElementById("doc-count").value;
+      console.log("Selected Sources:", selectedSources, "Topic:", topic, "Return:", docCount, "documents");
       // Functionality to filter and rank documents will be implemented later.
     }
 
