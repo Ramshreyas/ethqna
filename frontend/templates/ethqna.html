@@ -43,7 +43,7 @@
     header .header-right a:hover {
       text-decoration: underline;
     }
-    /* Main content wraps both tabs and the container panels */
+    /* Main content wraps both the document tabs and the panels below */
     .main-content {
       position: relative;
       flex: 1;
@@ -54,6 +54,7 @@
       background: #eee;
       padding: 10px;
       overflow-x: auto;
+      display: flex; /* Ensure horizontal layout */
     }
     .tab {
       padding: 8px 16px;
@@ -71,6 +72,7 @@
       display: flex;
       flex: 1;
       min-height: 0;
+      transition: margin-left 0.3s ease-in-out;
     }
     .chat-panel {
       flex: 1;
@@ -152,11 +154,11 @@
       transform: translateX(0);
       padding: 15px;
     }
-    /* When hidden, slide nearly offscreen (leaving a 20px vertical strip) */
+    /* When hidden, slide nearly offscreen (leaving about 20px visible) */
     .left-panel.hidden {
       transform: translateX(-230px);
     }
-    /* Toggle button placed on the vertical center of the panel's right border */
+    /* Toggle button placed on the vertical center of the panel's right edge */
     .panel-toggle {
       position: absolute;
       top: 50%;
@@ -218,15 +220,15 @@
     </div>
   </header>
   
-  <!-- Main content wraps both the document tabs and the chat/pdf panels -->
+  <!-- Main content wraps both the document tabs and the panels below -->
   <div class="main-content">
-    <!-- Tabs for PDF documents -->
+    <!-- Tabs for PDF documents (remains horizontal) -->
     <div class="tabs" id="pdf-tabs">
       <!-- Tabs will be populated here from /documents -->
     </div>
     
     <!-- Container for chat and PDF panels -->
-    <div class="container">
+    <div class="container" id="content-container">
       <!-- Chat Panel -->
       <div class="chat-panel">
         <div class="chat-messages" id="chat-messages">
@@ -290,16 +292,19 @@
   </footer>
 
   <script>
-    // Toggle the left panel's visibility by toggling the "hidden" class.
+    // Toggle the left panel's visibility and adjust the container margin accordingly.
     function toggleLeftPanel() {
       var panel = document.getElementById("left-panel");
       var toggleBtn = document.getElementById("panel-toggle");
+      var container = document.getElementById("content-container");
       if (panel.classList.contains("hidden")) {
         panel.classList.remove("hidden");
         toggleBtn.innerHTML = "<<";
+        container.style.marginLeft = "0px";
       } else {
         panel.classList.add("hidden");
         toggleBtn.innerHTML = ">>";
+        container.style.marginLeft = "30px"; // Increase left margin so content isn't overlapped.
       }
     }
 
