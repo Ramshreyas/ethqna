@@ -148,8 +148,9 @@
       height: 100%;
       background: #333; /* Dark background */
       color: #eee; /* Light text */
-      border: 1px solid #555;
-      border-right: none;
+      /* Reduced border thickness (or removed) */
+      border: 0; 
+      /* If you prefer a subtle line, you could use: border: 1px solid #333; */
       box-sizing: border-box;
       z-index: 10;
       transition: transform 0.3s ease-in-out;
@@ -166,9 +167,9 @@
       top: 50%;
       right: -15px;
       transform: translateY(-50%);
-      background: #555;
-      border: 1px solid #555;
-      border-left: none;
+      background: #333;
+      /* Remove border or set it to 0 */
+      border: 0; 
       width: 30px;
       height: 30px;
       line-height: 30px;
@@ -225,7 +226,7 @@
       border-top: 1px solid #555;
       margin: 10px 0;
     }
-    /* Document list styling: now similar to the sources checkbox group */
+    /* Document list styling: removed box styling to match the sources */
     .document-list {
       max-height: 200px;
       overflow-y: auto;
