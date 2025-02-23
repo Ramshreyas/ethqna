@@ -74,10 +74,25 @@ def documents_list():
     else:
         return jsonify({"documents": []})
 
-# --- New Endpoint for ethqna Template ---
 @app.route("/ethqna")
 def ethqna():
-    return render_template("ethqna.html")
+    if not google.authorized:
+        return render_template("login.html")
+    try:
+        resp = google.get("/oauth2/v2/userinfo")
+    except TokenExpiredError:
+        return redirect(url_for("google.login"))
+    except Exception:
+        return redirect(url_for("google.login"))
+    if not resp.ok:
+        return redirect(url_for("google.login"))
+    user_info = resp.json()
+    email = user_info.get("email", "")
+    # Allow only ethereum.org accounts.
+    if not email.endswith("@ethereum.org"):
+        return "Access denied: You must use an ethereum.org email", 403
+    return render_template("ethqna.html", user=user_info)
+
 
 # --- Main Application Routes ---
 @app.route("/")
