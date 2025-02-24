@@ -142,7 +142,6 @@
       <span>{{ user.name or user.email }}</span>
       <a href="{{ url_for('logout') }}"> ⏏ </a>
       <span>&nbsp; | </span>
-      <!-- Updated link to point to the /ethqna endpoint -->
       <a href="{{ url_for('ethqna') }}"> 🐰 </a>
     </div>
   </header>
@@ -182,14 +181,18 @@
   </footer>
   
   <script>
+    // Global variable to track the currently selected PDF file.
+    var selectedPdfFile = "";
+
     // Fetch the documents JSON from the /documents endpoint and populate tabs.
     fetch("/documents")
       .then(response => response.json())
       .then(data => {
         if (data.documents && data.documents.length > 0) {
           populateTabs(data.documents);
-          // Preselect the first document by setting the iframe src.
-          document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
+          // Preselect the first document by setting the global variable and iframe src.
+          selectedPdfFile = data.documents[0].pdf_file;
+          document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
         } else {
           document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
         }
@@ -204,7 +207,7 @@
       documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available; otherwise use a snippet from the description.
+        // Use the title if available; otherwise, a snippet of the description.
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
@@ -215,10 +218,11 @@
           }
           // Set this tab as active.
           this.classList.add("active");
+          // Update the global selected document variable.
+          selectedPdfFile = this.getAttribute("data-pdf-file");
           // Update the PDF viewer with the selected document.
           var pdfViewer = document.getElementById("pdf-viewer");
-          var baseUrl = "/pdf?doc=" + this.getAttribute("data-pdf-file");
-          pdfViewer.src = baseUrl;
+          pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
         };
         tabsContainer.appendChild(tab);
       });
@@ -232,8 +236,7 @@
         "Keep in mind that I'm a simple bot, so I may occasionally make mistakes.\n" +
         "You can use me to extract information, compare data, or summarize content.\n" +
         "The document on the right will try to update to the most relevant page based on your query.\n" +
-        "I might not know external facts, like the real names behind usernames (e.g., Bobthesponge1) or" +
-        " the meanings of certain acronyms, etc, so please be aware of that!";
+        "I might not know external facts, so please be aware of that!";
       
       var chatMessages = document.getElementById("chat-messages");
       var botMessageDiv = document.createElement('div');
@@ -264,10 +267,11 @@
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
 
+      // Include the selectedPdfFile in the request.
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, doc: selectedPdfFile })
       })
       .then(response => response.json())
       .then(data => {
