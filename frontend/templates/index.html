@@ -140,8 +140,8 @@
     <div class="header-left">ETH QnA</div>
     <div class="header-right">
       <span>{{ user.name or user.email }}</span>
-      <a href="{{ url_for('logout') }}"> ⏏ &nbsp;</a>
-      <span> | </span>
+      <a href="{{ url_for('logout') }}"> ⏏ </a>
+      <span>&nbsp; | </span>
       <!-- Updated link to point to the /ethqna endpoint -->
       <a href="{{ url_for('ethqna') }}"> 🐰 </a>
     </div>

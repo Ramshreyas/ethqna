@@ -33,7 +33,7 @@ app.secret_key = "supersekrit"  # Replace with a secure key in production
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Set up logging to a file stored in the data folder (mounted volume)
+# Set up logging to a file in the data folder (mounted volume)
 usage_log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'usage.log')
 handler = RotatingFileHandler(usage_log_path, maxBytes=1_000_000, backupCount=5)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -43,19 +43,32 @@ app.logger.addHandler(handler)
 
 @app.before_request
 def log_request_info():
-    # Default to unauthenticated
+    # Determine user identity if available
     user_email = "unauthenticated"
-    # If Google OAuth is authorized, try to fetch user info.
-    if getattr(app, 'google_bp', None) and google.authorized:
+    if google.authorized:
         try:
             resp = google.get("/oauth2/v2/userinfo")
             if resp.ok:
                 user_info = resp.json()
                 user_email = user_info.get("email", "unknown")
         except Exception as e:
-            app.logger.error(f"Error fetching user info: {e}")
-    # Log the request details: client IP, method, path, and user email.
-    app.logger.info(f"{request.remote_addr} {request.method} {request.path} by {user_email}")
+            app.logger.error("Error fetching user info: %s", e)
+    # Build the log message with method, path, query string, and remote IP.
+    log_message = f"User: {user_email} - {request.remote_addr} - {request.method} {request.path}"
+    if request.query_string:
+        log_message += "?" + request.query_string.decode('utf-8')
+    app.logger.info(log_message)
+    
+    # For POST/PUT requests, log a summary of the request activity only.
+    if request.method in ("POST", "PUT"):
+        if request.content_type and "multipart/form-data" in request.content_type:
+            app.logger.info("POST/PUT request with file upload: body omitted.")
+        else:
+            if request.data:
+                try:
+                    app.logger.info(f"Request body: {request.data.decode('utf-8')}")
+                except Exception:
+                    app.logger.info("Request body: <non-decodable content>")
 
 # Load configuration for Gemini API from config/config.yaml
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'config.yaml')
@@ -85,14 +98,12 @@ app.register_blueprint(google_bp, url_prefix="/login")
 # --- New Endpoint for PDF Documents ---
 @app.route("/documents")
 def documents_list():
-    # Compute the full path to documents.json.
     documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
     print("Looking for documents.json at:", documents_path, flush=True)
     if os.path.exists(documents_path):
         try:
             with open(documents_path, 'r') as f:
                 docs_dict = json.load(f)
-            # Convert the dictionary to a list (and sort by relevance descending, if available).
             docs_list = sorted(list(docs_dict.values()), key=lambda d: d.get("relevance", 0), reverse=True)
             return jsonify({"documents": docs_list})
         except Exception as e:
@@ -114,7 +125,6 @@ def ethqna():
         return redirect(url_for("google.login"))
     user_info = resp.json()
     email = user_info.get("email", "")
-    # Allow only ethereum.org accounts.
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("ethqna.html", user=user_info)
@@ -122,7 +132,6 @@ def ethqna():
 # --- Main Application Routes ---
 @app.route("/")
 def index():
-    # If the user is not authorized via Google, render the login page.
     if not google.authorized:
         return render_template("login.html")
     try:
@@ -135,7 +144,6 @@ def index():
         return redirect(url_for("google.login"))
     user_info = resp.json()
     email = user_info.get("email", "")
-    # Allow only ethereum.org accounts.
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("index.html", user=user_info)
@@ -150,23 +158,16 @@ def logout():
 def chat():
     data = request.get_json()
     user_message = data.get("message", "")
-
-    # Read the default PDF file (this can later be dynamic based on the selected document).
     pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     try:
         with open(pdf_path, 'rb') as f:
             pdf_data = f.read()
     except Exception as e:
         return jsonify({"response": f"Error reading PDF: {e}", "page": None})
-
-    # Build the prompt for Gemini.
     enhanced_prompt = build_prompt(user_message)
-
     from google import genai
     from google.genai import types
-
     client = genai.Client(api_key=api_key)
-
     try:
         response = client.models.generate_content(
             model="gemini-2.0-flash",
@@ -177,8 +178,6 @@ def chat():
         )
         raw_response = response.text
         print("Raw Gemini response:", raw_response)
-
-        # Remove Markdown code fences if present.
         cleaned_response = raw_response
         if cleaned_response.startswith("```"):
             lines = cleaned_response.splitlines()
@@ -188,7 +187,6 @@ def chat():
                 lines = lines[:-1]
             cleaned_response = "\n".join(lines).strip()
             print("Cleaned Gemini response:", cleaned_response)
-
         parsed_response = json.loads(cleaned_response)
         answer_text = parsed_response.get("response", "")
         page_number = parsed_response.get("page", None)
@@ -197,13 +195,11 @@ def chat():
         print("Error parsing Gemini response:", raw_response)
         combined_response = f"Error calling Gemini API or parsing response: {e}"
         page_number = None
-
     return jsonify({'response': combined_response, 'page': page_number})
 
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    # Use query parameter 'doc' to select a PDF file; default if not provided.
     pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     return send_from_directory(directory, pdf_file)
 
