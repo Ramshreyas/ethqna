@@ -128,8 +128,8 @@
       background: #333;
       color: #fff;
       text-align: center;
+      padding: 10px 20px;
       font-size: 14px;
-      height: 20px;
     }
   </style>
   <!-- Include Marked library for Markdown rendering -->
@@ -140,9 +140,7 @@
     <div class="header-left">ETH QnA</div>
     <div class="header-right">
       <span>{{ user.name or user.email }}</span>
-      <a href="{{ url_for('logout') }}"> ⏏ </a>
-      <span>&nbsp; | </span>
-      <a href="{{ url_for('ethqna') }}"> 🐰 </a>
+      <a href="{{ url_for('logout') }}">⏏</a>
     </div>
   </header>
   
@@ -170,29 +168,19 @@
     </div>
   </div>
 
-  <footer style="text-align: center; padding: 10px 20px; background: #333; color: #fff; font-size: 14px;">
-      MIT Licensed &nbsp;|&nbsp;
-      <a href="https://github.com/Ramshreyas/ethqna" target="_blank" style="color: #fff; text-decoration: none; vertical-align: middle;">
-        <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" style="vertical-align: middle; margin-right: 5px;" data-view-component="true">
-          <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82A7.6 7.6 0 018 4.81c.68.003 1.36.092 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-        </svg>
-        GitHub
-      </a>
+  <footer>
+    &copy; 2025 ETH QnA. All rights reserved.
   </footer>
-  
-  <script>
-    // Global variable to track the currently selected PDF file.
-    var selectedPdfFile = "";
 
+  <script>
     // Fetch the documents JSON from the /documents endpoint and populate tabs.
     fetch("/documents")
       .then(response => response.json())
       .then(data => {
         if (data.documents && data.documents.length > 0) {
           populateTabs(data.documents);
-          // Preselect the first document by setting the global variable and iframe src.
-          selectedPdfFile = data.documents[0].pdf_file;
-          document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
+          // Preselect the first document by setting the iframe src.
+          document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
         } else {
           document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
         }
@@ -207,7 +195,7 @@
       documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available; otherwise, a snippet of the description.
+        // Use the title if available; otherwise use a snippet from the description.
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
@@ -218,11 +206,10 @@
           }
           // Set this tab as active.
           this.classList.add("active");
-          // Update the global selected document variable.
-          selectedPdfFile = this.getAttribute("data-pdf-file");
           // Update the PDF viewer with the selected document.
           var pdfViewer = document.getElementById("pdf-viewer");
-          pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
+          var baseUrl = "/pdf?doc=" + this.getAttribute("data-pdf-file");
+          pdfViewer.src = baseUrl;
         };
         tabsContainer.appendChild(tab);
       });
@@ -236,7 +223,8 @@
         "Keep in mind that I'm a simple bot, so I may occasionally make mistakes.\n" +
         "You can use me to extract information, compare data, or summarize content.\n" +
         "The document on the right will try to update to the most relevant page based on your query.\n" +
-        "I might not know external facts, so please be aware of that!";
+        "I might not know external facts, like the real names behind usernames (e.g., Bobthesponge1) or" +
+        " the meanings of certain acronyms, etc, so please be aware of that!";
       
       var chatMessages = document.getElementById("chat-messages");
       var botMessageDiv = document.createElement('div');
@@ -267,11 +255,10 @@
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
 
-      // Include the selectedPdfFile in the request.
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message, doc: selectedPdfFile })
+        body: JSON.stringify({ message: message })
       })
       .then(response => response.json())
       .then(data => {
