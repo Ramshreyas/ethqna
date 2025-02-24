@@ -19,6 +19,8 @@ from flask import (
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
 from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Load environment variables from the project root .env
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
@@ -30,6 +32,29 @@ app.secret_key = "supersekrit"  # Replace with a secure key in production
 # Force Flask to generate HTTPS URLs and trust reverse-proxy headers.
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Set up logging to a file with rotation (1MB per file, 5 backups).
+handler = RotatingFileHandler('usage.log', maxBytes=1_000_000, backupCount=5)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+handler.setLevel(logging.INFO)
+app.logger.addHandler(handler)
+
+@app.before_request
+def log_request_info():
+    # Default to unauthenticated
+    user_email = "unauthenticated"
+    # If Google OAuth is authorized, try to fetch user info.
+    if getattr(app, 'google_bp', None) and google.authorized:
+        try:
+            resp = google.get("/oauth2/v2/userinfo")
+            if resp.ok:
+                user_info = resp.json()
+                user_email = user_info.get("email", "unknown")
+        except Exception as e:
+            app.logger.error(f"Error fetching user info: {e}")
+    # Log the request details: client IP, method, path, and user.
+    app.logger.info(f"{request.remote_addr} {request.method} {request.path} by {user_email}")
 
 # Load configuration for Gemini API from config/config.yaml
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'config.yaml')
@@ -92,7 +117,6 @@ def ethqna():
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("ethqna.html", user=user_info)
-
 
 # --- Main Application Routes ---
 @app.route("/")
