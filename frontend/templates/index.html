@@ -1,207 +1,306 @@
-import os
-import random
-import time
-import json
-import hashlib
-import yaml
-import importlib
-from datetime import datetime, timedelta
-from flask import (
-    Flask,
-    request,
-    jsonify,
-    render_template,
-    redirect,
-    url_for,
-    make_response,
-    send_from_directory,
-)
-from dotenv import load_dotenv
-from werkzeug.middleware.proxy_fix import ProxyFix
-from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
-import logging
-from logging.handlers import RotatingFileHandler
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETH QnA</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header .header-left {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    header .header-right {
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+    }
+    header .header-right span {
+      margin-right: 10px;
+    }
+    header .header-right a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 20px;
+    }
+    header .header-right a:hover {
+      text-decoration: underline;
+    }
+    /* Tabs container styling */
+    .tabs {
+      display: flex;
+      background: #eee;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 8px 16px;
+      margin-right: 5px;
+      background: #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tab.active {
+      background: #bbb;
+    }
+    .container {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+    .chat-panel {
+      flex: 1;
+      border-right: 1px solid #ccc;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .pdf-panel {
+      flex: 1;
+    }
+    .chat-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .chat-input {
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: #eee;
+      display: flex;
+      align-items: center;
+    }
+    .chat-input input[type="text"] {
+      width: 80%;
+      padding: 8px;
+      font-size: 14px;
+    }
+    .chat-input button {
+      padding: 8px 12px;
+      margin-left: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .chat-message {
+      margin-bottom: 8px;
+    }
+    .user {
+      font-weight: bold;
+    }
+    .bot {
+      font-style: italic;
+      color: #555;
+    }
+    .spinner {
+      display: none;
+      width: 30px;
+      height: 30px;
+      border: 4px solid #ccc;
+      border-top-color: #333;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    footer {
+      background: #333;
+      color: #fff;
+      text-align: center;
+      font-size: 14px;
+      height: 20px;
+    }
+  </style>
+  <!-- Include Marked library for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-left">ETH QnA</div>
+    <div class="header-right">
+      <span>{{ user.name or user.email }}</span>
+      <a href="{{ url_for('logout') }}"> ⏏ </a>
+      <span>&nbsp; | </span>
+      <a href="{{ url_for('ethqna') }}"> 🐰 </a>
+    </div>
+  </header>
+  
+  <!-- Tabs for PDF documents -->
+  <div class="tabs" id="pdf-tabs">
+    <!-- Tabs will be populated here from /documents -->
+  </div>
+  
+  <div class="container">
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <div class="chat-messages" id="chat-messages">
+        <!-- The greeting message will be inserted here on page load -->
+      </div>
+      <div class="chat-input">
+        <input type="text" id="message-input" placeholder="Type your message..." />
+        <button onclick="sendMessage()">Send</button>
+        <div class="spinner" id="spinner"></div>
+      </div>
+    </div>
 
-# Load environment variables from the project root .env
-dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
-load_dotenv(dotenv_path)
+    <!-- PDF Panel -->
+    <div class="pdf-panel">
+      <iframe id="pdf-viewer" src="" width="100%" height="100%"></iframe>
+    </div>
+  </div>
 
-app = Flask(__name__)
-app.secret_key = "supersekrit"  # Replace with a secure key in production
+  <footer style="text-align: center; padding: 10px 20px; background: #333; color: #fff; font-size: 14px;">
+      MIT Licensed &nbsp;|&nbsp;
+      <a href="https://github.com/Ramshreyas/ethqna" target="_blank" style="color: #fff; text-decoration: none; vertical-align: middle;">
+        <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" style="vertical-align: middle; margin-right: 5px;" data-view-component="true">
+          <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82A7.6 7.6 0 018 4.81c.68.003 1.36.092 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+        </svg>
+        GitHub
+      </a>
+  </footer>
+  
+  <script>
+    // Global variable to track the currently selected PDF file.
+    var selectedPdfFile = "";
 
-# Force Flask to generate HTTPS URLs and trust reverse-proxy headers.
-app.config['PREFERRED_URL_SCHEME'] = 'https'
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    // Fetch the documents JSON from the /documents endpoint and populate tabs.
+    fetch("/documents")
+      .then(response => response.json())
+      .then(data => {
+        if (data.documents && data.documents.length > 0) {
+          populateTabs(data.documents);
+          // Preselect the first document by setting the global variable and iframe src.
+          selectedPdfFile = data.documents[0].pdf_file;
+          document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
+        } else {
+          document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching documents:", error);
+      });
 
-# Set up logging to a file stored in the data folder (mounted volume)
-usage_log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'usage.log')
-handler = RotatingFileHandler(usage_log_path, maxBytes=1_000_000, backupCount=5)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-app.logger.addHandler(handler)
+    function populateTabs(documents) {
+      var tabsContainer = document.getElementById("pdf-tabs");
+      tabsContainer.innerHTML = "";  // Clear any existing tabs.
+      documents.forEach(function(doc, index) {
+        var tab = document.createElement("div");
+        tab.className = "tab" + (index === 0 ? " active" : "");
+        // Use the title if available; otherwise, a snippet of the description.
+        tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
+        tab.setAttribute("data-pdf-file", doc.pdf_file);
+        tab.onclick = function() {
+          // Remove active class from all tabs.
+          var tabs = document.getElementsByClassName("tab");
+          for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.remove("active");
+          }
+          // Set this tab as active.
+          this.classList.add("active");
+          // Update the global selected document variable.
+          selectedPdfFile = this.getAttribute("data-pdf-file");
+          // Update the PDF viewer with the selected document.
+          var pdfViewer = document.getElementById("pdf-viewer");
+          pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
+        };
+        tabsContainer.appendChild(tab);
+      });
+    }
 
-@app.before_request
-def log_request_info():
-    # Default to unauthenticated
-    user_email = "unauthenticated"
-    # If Google OAuth is authorized, try to fetch user info.
-    from flask_dance.contrib.google import google
-    if google.authorized:
-        try:
-            resp = google.get("/oauth2/v2/userinfo")
-            if resp.ok:
-                user_info = resp.json()
-                user_email = user_info.get("email", "unknown")
-        except Exception as e:
-            app.logger.error(f"Error fetching user info: {e}")
-    app.logger.info(f"{request.remote_addr} {request.method} {request.path} by {user_email}")
+    // Prepopulate chat with a helpful greeting when the page loads.
+    window.onload = function() {
+      var greeting = 
+        "Hello! I'm your friendly research assistant.\n" +
+        "Feel free to ask me anything about these documents and I'll do my best to help.\n" +
+        "Keep in mind that I'm a simple bot, so I may occasionally make mistakes.\n" +
+        "You can use me to extract information, compare data, or summarize content.\n" +
+        "The document on the right will try to update to the most relevant page based on your query.\n" +
+        "I might not know external facts, so please be aware of that!";
+      
+      var chatMessages = document.getElementById("chat-messages");
+      var botMessageDiv = document.createElement('div');
+      botMessageDiv.classList.add('chat-message', 'bot');
+      botMessageDiv.innerHTML = marked.parse(greeting);
+      chatMessages.appendChild(botMessageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
 
-# Load configuration for Gemini API from config/config.yaml
-config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'config.yaml')
-with open(config_path, 'r') as f:
-    config = yaml.safe_load(f)
-gemini_api_key_env_var = config.get('gemini_api_key_env_var', 'GEMINI_API_KEY')
-api_key = os.getenv(gemini_api_key_env_var)
+    document.getElementById('message-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
 
-# Import the prompt builder
-from prompts import build_prompt
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+      if (message === '') return;
 
-# --- Google OAuth Setup using Flask-Dance ---
-from flask_dance.contrib.google import make_google_blueprint, google
+      const chatMessages = document.getElementById('chat-messages');
+      const userMessageDiv = document.createElement('div');
+      userMessageDiv.classList.add('chat-message', 'user');
+      userMessageDiv.textContent = "User: " + message;
+      chatMessages.appendChild(userMessageDiv);
+      input.value = '';
 
-google_bp = make_google_blueprint(
-    client_id=os.environ.get("GOOGLE_OAUTH_CLIENT_ID"),
-    client_secret=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"),
-    scope=[
-        "openid",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
-    ],
-    redirect_to="index"  # After login, redirect to the index endpoint.
-)
-app.register_blueprint(google_bp, url_prefix="/login")
+      const spinner = document.getElementById('spinner');
+      spinner.style.display = 'block';
 
-# --- New Endpoint for PDF Documents ---
-@app.route("/documents")
-def documents_list():
-    documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
-    print("Looking for documents.json at:", documents_path, flush=True)
-    if os.path.exists(documents_path):
-        try:
-            with open(documents_path, 'r') as f:
-                docs_dict = json.load(f)
-            docs_list = sorted(list(docs_dict.values()), key=lambda d: d.get("relevance", 0), reverse=True)
-            return jsonify({"documents": docs_list})
-        except Exception as e:
-            return jsonify({"documents": [], "error": f"Failed to load documents: {e}"}), 500
-    else:
-        return jsonify({"documents": []})
-
-@app.route("/ethqna")
-def ethqna():
-    if not google.authorized:
-        return render_template("login.html")
-    try:
-        resp = google.get("/oauth2/v2/userinfo")
-    except TokenExpiredError:
-        return redirect(url_for("google.login"))
-    except Exception:
-        return redirect(url_for("google.login"))
-    if not resp.ok:
-        return redirect(url_for("google.login"))
-    user_info = resp.json()
-    email = user_info.get("email", "")
-    if not email.endswith("@ethereum.org"):
-        return "Access denied: You must use an ethereum.org email", 403
-    return render_template("ethqna.html", user=user_info)
-
-# --- Main Application Routes ---
-@app.route("/")
-def index():
-    if not google.authorized:
-        return render_template("login.html")
-    try:
-        resp = google.get("/oauth2/v2/userinfo")
-    except TokenExpiredError:
-        return redirect(url_for("google.login"))
-    except Exception:
-        return redirect(url_for("google.login"))
-    if not resp.ok:
-        return redirect(url_for("google.login"))
-    user_info = resp.json()
-    email = user_info.get("email", "")
-    if not email.endswith("@ethereum.org"):
-        return "Access denied: You must use an ethereum.org email", 403
-    return render_template("index.html", user=user_info)
-
-@app.route("/logout")
-def logout():
-    if google_bp.token:
-        del google_bp.token
-    return redirect(url_for("index"))
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    user_message = data.get("message", "")
-    # Get the document filename from the request, defaulting if not provided.
-    doc_filename = data.get("doc", "41dd8407-7914-4978-a078-8dc597d8fb86.pdf")
-    print(f"Received chat request: message='{user_message}', doc_filename='{doc_filename}'", flush=True)
-    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', doc_filename)
-    print(f"Computed PDF path: {pdf_path}", flush=True)
-    try:
-        with open(pdf_path, 'rb') as f:
-            pdf_data = f.read()
-        print(f"Successfully read PDF file: {doc_filename}", flush=True)
-    except Exception as e:
-        print(f"Error reading PDF file at {pdf_path}: {e}", flush=True)
-        return jsonify({"response": f"Error reading PDF: {e}", "page": None})
-
-    enhanced_prompt = build_prompt(user_message)
-    print(f"Built enhanced prompt: {enhanced_prompt}", flush=True)
-
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key=api_key)
-
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-                types.Part.from_bytes(data=pdf_data, mime_type='application/pdf'),
-                enhanced_prompt
-            ]
-        )
-        raw_response = response.text
-        print("Raw Gemini response:", raw_response, flush=True)
-        cleaned_response = raw_response
-        if cleaned_response.startswith("```"):
-            lines = cleaned_response.splitlines()
-            if lines and lines[0].strip().startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].strip().startswith("```"):
-                lines = lines[:-1]
-            cleaned_response = "\n".join(lines).strip()
-            print("Cleaned Gemini response:", cleaned_response, flush=True)
-        parsed_response = json.loads(cleaned_response)
-        answer_text = parsed_response.get("response", "")
-        page_number = parsed_response.get("page", None)
-        combined_response = f"Answer: {answer_text} (Page {page_number})"
-    except Exception as e:
-        print("Error parsing Gemini response:", raw_response, flush=True)
-        combined_response = f"Error calling Gemini API or parsing response: {e}"
-        page_number = None
-
-    print(f"Returning response: {combined_response}", flush=True)
-    return jsonify({'response': combined_response, 'page': page_number})
-
-@app.route("/pdf")
-def pdf():
-    directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
-    return send_from_directory(directory, pdf_file)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+      // Include the selectedPdfFile in the request.
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message, doc: selectedPdfFile })
+      })
+      .then(response => response.json())
+      .then(data => {
+        spinner.style.display = 'none';
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.classList.add('chat-message', 'bot');
+        
+        var docInfoLine = "";
+        if (data.page) {
+          var activeTab = document.querySelector('.tab.active');
+          if (activeTab) {
+            // Prepend document info with title and page number.
+            docInfoLine = "<strong>From:</strong> " + activeTab.textContent + " (Page " + data.page + ")<br>";
+          }
+          // Update the PDF viewer to scroll to the specified page.
+          var pdfViewer = document.getElementById("pdf-viewer");
+          var currentUrl = pdfViewer.src.split("#")[0];
+          pdfViewer.src = currentUrl + "#page=" + data.page;
+        }
+        
+        botMessageDiv.innerHTML = docInfoLine + marked.parse(data.response);
+        chatMessages.appendChild(botMessageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        spinner.style.display = 'none';
+      });
+    }
+  </script>
+</body>
+</html>

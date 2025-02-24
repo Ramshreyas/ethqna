@@ -46,7 +46,8 @@ def log_request_info():
     # Default to unauthenticated
     user_email = "unauthenticated"
     # If Google OAuth is authorized, try to fetch user info.
-    if getattr(app, 'google_bp', None) and google.authorized:
+    from flask_dance.contrib.google import google
+    if google.authorized:
         try:
             resp = google.get("/oauth2/v2/userinfo")
             if resp.ok:
@@ -54,7 +55,6 @@ def log_request_info():
                 user_email = user_info.get("email", "unknown")
         except Exception as e:
             app.logger.error(f"Error fetching user info: {e}")
-    # Log the request details: client IP, method, path, and user email.
     app.logger.info(f"{request.remote_addr} {request.method} {request.path} by {user_email}")
 
 # Load configuration for Gemini API from config/config.yaml
@@ -85,14 +85,12 @@ app.register_blueprint(google_bp, url_prefix="/login")
 # --- New Endpoint for PDF Documents ---
 @app.route("/documents")
 def documents_list():
-    # Compute the full path to documents.json.
     documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
     print("Looking for documents.json at:", documents_path, flush=True)
     if os.path.exists(documents_path):
         try:
             with open(documents_path, 'r') as f:
                 docs_dict = json.load(f)
-            # Convert the dictionary to a list (and sort by relevance descending, if available).
             docs_list = sorted(list(docs_dict.values()), key=lambda d: d.get("relevance", 0), reverse=True)
             return jsonify({"documents": docs_list})
         except Exception as e:
@@ -114,7 +112,6 @@ def ethqna():
         return redirect(url_for("google.login"))
     user_info = resp.json()
     email = user_info.get("email", "")
-    # Allow only ethereum.org accounts.
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("ethqna.html", user=user_info)
@@ -122,7 +119,6 @@ def ethqna():
 # --- Main Application Routes ---
 @app.route("/")
 def index():
-    # If the user is not authorized via Google, render the login page.
     if not google.authorized:
         return render_template("login.html")
     try:
@@ -135,7 +131,6 @@ def index():
         return redirect(url_for("google.login"))
     user_info = resp.json()
     email = user_info.get("email", "")
-    # Allow only ethereum.org accounts.
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("index.html", user=user_info)
@@ -150,17 +145,21 @@ def logout():
 def chat():
     data = request.get_json()
     user_message = data.get("message", "")
-
-    # Read the default PDF file (this can later be dynamic based on the selected document).
-    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
+    # Get the document filename from the request, defaulting if not provided.
+    doc_filename = data.get("doc", "41dd8407-7914-4978-a078-8dc597d8fb86.pdf")
+    print(f"Received chat request: message='{user_message}', doc_filename='{doc_filename}'", flush=True)
+    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', doc_filename)
+    print(f"Computed PDF path: {pdf_path}", flush=True)
     try:
         with open(pdf_path, 'rb') as f:
             pdf_data = f.read()
+        print(f"Successfully read PDF file: {doc_filename}", flush=True)
     except Exception as e:
+        print(f"Error reading PDF file at {pdf_path}: {e}", flush=True)
         return jsonify({"response": f"Error reading PDF: {e}", "page": None})
 
-    # Build the prompt for Gemini.
     enhanced_prompt = build_prompt(user_message)
+    print(f"Built enhanced prompt: {enhanced_prompt}", flush=True)
 
     from google import genai
     from google.genai import types
@@ -176,9 +175,7 @@ def chat():
             ]
         )
         raw_response = response.text
-        print("Raw Gemini response:", raw_response)
-
-        # Remove Markdown code fences if present.
+        print("Raw Gemini response:", raw_response, flush=True)
         cleaned_response = raw_response
         if cleaned_response.startswith("```"):
             lines = cleaned_response.splitlines()
@@ -187,23 +184,22 @@ def chat():
             if lines and lines[-1].strip().startswith("```"):
                 lines = lines[:-1]
             cleaned_response = "\n".join(lines).strip()
-            print("Cleaned Gemini response:", cleaned_response)
-
+            print("Cleaned Gemini response:", cleaned_response, flush=True)
         parsed_response = json.loads(cleaned_response)
         answer_text = parsed_response.get("response", "")
         page_number = parsed_response.get("page", None)
         combined_response = f"Answer: {answer_text} (Page {page_number})"
     except Exception as e:
-        print("Error parsing Gemini response:", raw_response)
+        print("Error parsing Gemini response:", raw_response, flush=True)
         combined_response = f"Error calling Gemini API or parsing response: {e}"
         page_number = None
 
+    print(f"Returning response: {combined_response}", flush=True)
     return jsonify({'response': combined_response, 'page': page_number})
 
 @app.route("/pdf")
 def pdf():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
-    # Use query parameter 'doc' to select a PDF file; default if not provided.
     pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     return send_from_directory(directory, pdf_file)
 
