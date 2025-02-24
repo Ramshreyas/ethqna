@@ -33,8 +33,9 @@ app.secret_key = "supersekrit"  # Replace with a secure key in production
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Set up logging to a file with rotation (1MB per file, 5 backups).
-handler = RotatingFileHandler('usage.log', maxBytes=1_000_000, backupCount=5)
+# Set up logging to a file stored in the data folder (mounted volume)
+usage_log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'usage.log')
+handler = RotatingFileHandler(usage_log_path, maxBytes=1_000_000, backupCount=5)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
@@ -53,7 +54,7 @@ def log_request_info():
                 user_email = user_info.get("email", "unknown")
         except Exception as e:
             app.logger.error(f"Error fetching user info: {e}")
-    # Log the request details: client IP, method, path, and user.
+    # Log the request details: client IP, method, path, and user email.
     app.logger.info(f"{request.remote_addr} {request.method} {request.path} by {user_email}")
 
 # Load configuration for Gemini API from config/config.yaml
