@@ -54,7 +54,7 @@
       background: #eee;
       padding: 10px;
       overflow-x: auto;
-      display: flex; /* Horizontal layout */
+      display: flex;
     }
     .tab {
       padding: 8px 16px;
@@ -73,7 +73,7 @@
       flex: 1;
       min-height: 0;
       transition: margin-left 0.3s ease-in-out;
-      margin-left: 0; /* Always flush */
+      margin-left: 0;
     }
     .chat-panel {
       flex: 1;
@@ -81,7 +81,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: 0; /* Remove any padding */
+      padding: 0;
       margin: 0;
     }
     .pdf-panel {
@@ -139,7 +139,7 @@
       background: #333;
       color: #fff;
       text-align: center;
-      padding: 10px 10px; /* Reduced vertical padding */
+      padding: 10px 10px;
       font-size: 14px;
     }
     /* Left panel styling – absolutely positioned over .main-content */
@@ -149,20 +149,18 @@
       left: 0;
       width: 250px;
       height: 100%;
-      background: #333; /* Dark background */
-      color: #eee; /* Light text */
-      border: 0; /* No border */
+      background: #333;
+      color: #eee;
+      border: 0;
       box-sizing: border-box;
       z-index: 10;
       transition: transform 0.3s ease-in-out;
       transform: translateX(0);
       padding: 15px;
     }
-    /* When hidden, slide nearly offscreen (leaving minimal visible area) */
     .left-panel.hidden {
       transform: translateX(-250px);
     }
-    /* Toggle button placed on the vertical center of the panel's right edge */
     .panel-toggle {
       position: absolute;
       top: 50%;
@@ -179,14 +177,12 @@
       font-weight: bold;
       color: #eee;
     }
-    /* Styling for panel title */
     .panel-title {
       margin-bottom: 10px;
       font-size: 18px;
       border-bottom: 1px solid #555;
       padding-bottom: 5px;
     }
-    /* Styling for topic panel elements */
     .topic-panel {
       margin-bottom: 10px;
     }
@@ -211,7 +207,6 @@
       background: #555;
       color: #eee;
     }
-    /* Checkbox group styling for sources */
     .checkbox-group label {
       display: block;
       margin-bottom: 5px;
@@ -220,13 +215,11 @@
     .checkbox-group input[type="checkbox"] {
       margin-right: 5px;
     }
-    /* Divider styling */
     .divider {
       border: 0;
       border-top: 1px solid #555;
       margin: 10px 0;
     }
-    /* Document list styling: now similar to the sources checkbox group */
     .document-list {
       max-height: 200px;
       overflow-y: auto;
@@ -354,6 +347,12 @@
       // Functionality to filter and rank documents will be implemented later.
     }
 
+    // New function to update the PDF viewer based on a file and page.
+    function updatePdfViewer(pdfFile, page) {
+      var pdfViewer = document.getElementById("pdf-viewer");
+      pdfViewer.src = "/pdf?doc=" + pdfFile + "#page=" + page;
+    }
+
     fetch("/documents")
       .then(response => response.json())
       .then(data => {
@@ -428,11 +427,10 @@
       input.value = '';
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
-      // Include the selectedPdfFile in the request.
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message, doc: selectedPdfFile })
+        body: JSON.stringify({ message: message })
       })
       .then(response => response.json())
       .then(data => {
@@ -443,8 +441,10 @@
         if (data.page) {
           var activeTab = document.querySelector('.tab.active');
           if (activeTab) {
-            docInfoLine = "<strong>From:</strong> " + activeTab.textContent + " (Page " + data.page + ")<br>";
+            var pdfFile = activeTab.getAttribute("data-pdf-file");
+            docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;"><strong>From:</strong> ${activeTab.textContent} (Page ${data.page})</a><br>`;
           }
+          // Optionally update the viewer immediately as well.
           var pdfViewer = document.getElementById("pdf-viewer");
           var currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
