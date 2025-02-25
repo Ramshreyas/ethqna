@@ -329,6 +329,9 @@
   </footer>
 
   <script>
+    // Global variable to track the currently selected PDF file.
+    var selectedPdfFile = "";
+
     function toggleLeftPanel() {
       var panel = document.getElementById("left-panel");
       var toggleBtn = document.getElementById("panel-toggle");
@@ -356,7 +359,9 @@
       .then(data => {
         if (data.documents && data.documents.length > 0) {
           populateTabs(data.documents);
-          document.getElementById("pdf-viewer").src = "/pdf?doc=" + data.documents[0].pdf_file;
+          // Preselect the first document and update PDF viewer.
+          selectedPdfFile = data.documents[0].pdf_file;
+          document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
         } else {
           document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
         }
@@ -379,8 +384,10 @@
             tabs[i].classList.remove("active");
           }
           this.classList.add("active");
+          // Update the global selectedPdfFile variable.
+          selectedPdfFile = this.getAttribute("data-pdf-file");
           var pdfViewer = document.getElementById("pdf-viewer");
-          pdfViewer.src = "/pdf?doc=" + this.getAttribute("data-pdf-file");
+          pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
         };
         tabsContainer.appendChild(tab);
       });
@@ -421,10 +428,11 @@
       input.value = '';
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
+      // Include the selectedPdfFile in the request.
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, doc: selectedPdfFile })
       })
       .then(response => response.json())
       .then(data => {
