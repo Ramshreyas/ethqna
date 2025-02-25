@@ -460,7 +460,7 @@
           const activeTab = document.querySelector('.tab.active');
           if (activeTab) {
             const pdfFile = activeTab.getAttribute("data-pdf-file");
-            docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;"><strong>From:</strong> ${activeTab.textContent} (Page ${data.page})</a><br>`;
+            docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;">${activeTab.textContent} (Page ${data.page})</a><br>`;
           }
           // Update the PDF viewer immediately.
           const pdfViewer = document.getElementById("pdf-viewer");
