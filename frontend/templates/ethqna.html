@@ -427,6 +427,7 @@
       input.value = '';
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
+
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -435,21 +436,34 @@
       .then(response => response.json())
       .then(data => {
         spinner.style.display = 'none';
+
+        console.log("Chat response:", data); // Debug: log the response
+
         const botMessageDiv = document.createElement('div');
         botMessageDiv.classList.add('chat-message', 'bot');
-        var docInfoLine = "";
+        let docInfoLine = "";
         if (data.page) {
-          var activeTab = document.querySelector('.tab.active');
+          const activeTab = document.querySelector('.tab.active');
           if (activeTab) {
-            var pdfFile = activeTab.getAttribute("data-pdf-file");
+            const pdfFile = activeTab.getAttribute("data-pdf-file");
             docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;"><strong>From:</strong> ${activeTab.textContent} (Page ${data.page})</a><br>`;
           }
-          // Optionally update the viewer immediately as well.
-          var pdfViewer = document.getElementById("pdf-viewer");
-          var currentUrl = pdfViewer.src.split("#")[0];
+          // Update the PDF viewer immediately
+          const pdfViewer = document.getElementById("pdf-viewer");
+          const currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
         }
-        botMessageDiv.innerHTML = docInfoLine + marked.parse(data.response);
+
+        // Remove any preexisting "From:" line from the server response if present.
+        let responseContent = data.response;
+        if (responseContent.indexOf("<strong>From:</strong>") === 0) {
+          const brIndex = responseContent.indexOf("<br>");
+          if (brIndex !== -1) {
+            responseContent = responseContent.substring(brIndex + 4);
+          }
+        }
+        
+        botMessageDiv.innerHTML = docInfoLine + marked.parse(responseContent);
         chatMessages.appendChild(botMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       })
