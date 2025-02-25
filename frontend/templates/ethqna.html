@@ -437,7 +437,7 @@
       const chatMessages = document.getElementById('chat-messages');
       const userMessageDiv = document.createElement('div');
       userMessageDiv.classList.add('chat-message', 'user');
-      userMessageDiv.textContent = "User: " + message;
+      userMessageDiv.textContent = message;
       chatMessages.appendChild(userMessageDiv);
       input.value = '';
       const spinner = document.getElementById('spinner');
@@ -469,6 +469,7 @@
         }
         // Remove any preexisting "From:" line from the server response if present.
         let responseContent = data.response;
+        responseContent = responseContent.replace(/^Answer:\s*/, "");
         if (responseContent.indexOf("<strong>From:</strong>") === 0) {
           const brIndex = responseContent.indexOf("<br>");
           if (brIndex !== -1) {
