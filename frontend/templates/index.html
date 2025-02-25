@@ -72,6 +72,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      padding: 0;
+      margin: 0;
     }
     .pdf-panel {
       flex: 1;
@@ -184,13 +186,28 @@
     // Global variable to track the currently selected PDF file.
     var selectedPdfFile = "";
 
-    // Fetch the documents JSON from the /documents endpoint and populate tabs.
+    // Function to update the PDF viewer and active tab.
+    function updatePdfViewer(pdfFile, page) {
+      var pdfViewer = document.getElementById("pdf-viewer");
+      pdfViewer.src = "/pdf?doc=" + pdfFile + "#page=" + page;
+      selectedPdfFile = pdfFile;
+      var tabs = document.querySelectorAll(".tab");
+      tabs.forEach(function(tab) {
+        if (tab.getAttribute("data-pdf-file") === pdfFile) {
+          tab.classList.add("active");
+        } else {
+          tab.classList.remove("active");
+        }
+      });
+    }
+
+    // Fetch documents and populate the tabs.
     fetch("/documents")
       .then(response => response.json())
       .then(data => {
         if (data.documents && data.documents.length > 0) {
           populateTabs(data.documents);
-          // Preselect the first document by setting the global variable and iframe src.
+          // Preselect the first document and update the PDF viewer.
           selectedPdfFile = data.documents[0].pdf_file;
           document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
         } else {
@@ -207,20 +224,16 @@
       documents.forEach(function(doc, index) {
         var tab = document.createElement("div");
         tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available; otherwise, a snippet of the description.
+        // Use the title if available; otherwise, use a snippet of the description.
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
-          // Remove active class from all tabs.
           var tabs = document.getElementsByClassName("tab");
           for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove("active");
           }
-          // Set this tab as active.
           this.classList.add("active");
-          // Update the global selected document variable.
           selectedPdfFile = this.getAttribute("data-pdf-file");
-          // Update the PDF viewer with the selected document.
           var pdfViewer = document.getElementById("pdf-viewer");
           pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
         };
@@ -228,7 +241,7 @@
       });
     }
 
-    // Prepopulate chat with a helpful greeting when the page loads.
+    // Prepopulate chat with a greeting message when the page loads.
     window.onload = function() {
       var greeting = 
         "Hello! I'm your friendly research assistant.\n" +
@@ -263,11 +276,11 @@
       userMessageDiv.textContent = "User: " + message;
       chatMessages.appendChild(userMessageDiv);
       input.value = '';
-
+      
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
-
-      // Include the selectedPdfFile in the request.
+      
+      // Send the user query along with the currently selected document.
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -278,21 +291,26 @@
         spinner.style.display = 'none';
         const botMessageDiv = document.createElement('div');
         botMessageDiv.classList.add('chat-message', 'bot');
-        
-        var docInfoLine = "";
+        let docInfoLine = "";
         if (data.page) {
-          var activeTab = document.querySelector('.tab.active');
+          const activeTab = document.querySelector('.tab.active');
           if (activeTab) {
-            // Prepend document info with title and page number.
-            docInfoLine = "<strong>From:</strong> " + activeTab.textContent + " (Page " + data.page + ")<br>";
+            const pdfFile = activeTab.getAttribute("data-pdf-file");
+            docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;"><strong>From:</strong> ${activeTab.textContent} (Page ${data.page})</a><br>`;
           }
-          // Update the PDF viewer to scroll to the specified page.
           var pdfViewer = document.getElementById("pdf-viewer");
           var currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
         }
-        
-        botMessageDiv.innerHTML = docInfoLine + marked.parse(data.response);
+        // Remove any preexisting "From:" line from the server response if present.
+        let responseContent = data.response;
+        if (responseContent.indexOf("<strong>From:</strong>") === 0) {
+          const brIndex = responseContent.indexOf("<br>");
+          if (brIndex !== -1) {
+            responseContent = responseContent.substring(brIndex + 4);
+          }
+        }
+        botMessageDiv.innerHTML = docInfoLine + marked.parse(responseContent);
         chatMessages.appendChild(botMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       })
