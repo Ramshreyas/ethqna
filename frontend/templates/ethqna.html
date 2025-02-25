@@ -347,10 +347,22 @@
       // Functionality to filter and rank documents will be implemented later.
     }
 
-    // New function to update the PDF viewer based on a file and page.
+    // New function to update the PDF viewer and active tab.
     function updatePdfViewer(pdfFile, page) {
+      // Update the PDF viewer iframe.
       var pdfViewer = document.getElementById("pdf-viewer");
       pdfViewer.src = "/pdf?doc=" + pdfFile + "#page=" + page;
+      // Update the global variable.
+      selectedPdfFile = pdfFile;
+      // Update the active tab in the horizontal list.
+      var tabs = document.querySelectorAll(".tab");
+      tabs.forEach(function(tab) {
+        if (tab.getAttribute("data-pdf-file") === pdfFile) {
+          tab.classList.add("active");
+        } else {
+          tab.classList.remove("active");
+        }
+      });
     }
 
     fetch("/documents")
@@ -378,13 +390,16 @@
         tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
         tab.setAttribute("data-pdf-file", doc.pdf_file);
         tab.onclick = function() {
+          // Remove active class from all tabs.
           var tabs = document.getElementsByClassName("tab");
           for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove("active");
           }
+          // Set this tab as active.
           this.classList.add("active");
           // Update the global selectedPdfFile variable.
           selectedPdfFile = this.getAttribute("data-pdf-file");
+          // Update the PDF viewer.
           var pdfViewer = document.getElementById("pdf-viewer");
           pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
         };
@@ -427,33 +442,31 @@
       input.value = '';
       const spinner = document.getElementById('spinner');
       spinner.style.display = 'block';
-
+      
+      // Now include the currently selected doc with the query.
       fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, doc: selectedPdfFile })
       })
       .then(response => response.json())
       .then(data => {
         spinner.style.display = 'none';
-
-        console.log("Chat response:", data); // Debug: log the response
-
         const botMessageDiv = document.createElement('div');
         botMessageDiv.classList.add('chat-message', 'bot');
         let docInfoLine = "";
         if (data.page) {
+          // Use the active tab to generate the clickable "From:" link.
           const activeTab = document.querySelector('.tab.active');
           if (activeTab) {
             const pdfFile = activeTab.getAttribute("data-pdf-file");
             docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;"><strong>From:</strong> ${activeTab.textContent} (Page ${data.page})</a><br>`;
           }
-          // Update the PDF viewer immediately
+          // Update the PDF viewer immediately.
           const pdfViewer = document.getElementById("pdf-viewer");
           const currentUrl = pdfViewer.src.split("#")[0];
           pdfViewer.src = currentUrl + "#page=" + data.page;
         }
-
         // Remove any preexisting "From:" line from the server response if present.
         let responseContent = data.response;
         if (responseContent.indexOf("<strong>From:</strong>") === 0) {
@@ -462,7 +475,6 @@
             responseContent = responseContent.substring(brIndex + 4);
           }
         }
-        
         botMessageDiv.innerHTML = docInfoLine + marked.parse(responseContent);
         chatMessages.appendChild(botMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
