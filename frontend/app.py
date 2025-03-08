@@ -27,6 +27,9 @@ from logging.handlers import RotatingFileHandler
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
 load_dotenv(dotenv_path)
 
+# Set development mode flag (set DEV_MODE=1 in your environment for local testing)
+DEV_MODE = os.environ.get('DEV_MODE', '0') == '1'
+
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
 
@@ -101,6 +104,9 @@ def documents_list():
 
 @app.route("/ethqna")
 def ethqna():
+    if DEV_MODE:
+        user_info = {"email": "local@test.com", "name": "Local Tester"}
+        return render_template("ethqna.html", user=user_info)
     if not google.authorized:
         return render_template("login.html")
     try:
@@ -120,6 +126,9 @@ def ethqna():
 # --- Main Application Routes ---
 @app.route("/")
 def index():
+    if DEV_MODE:
+        user_info = {"email": "local@test.com", "name": "Local Tester"}
+        return render_template("index.html", user=user_info)
     if not google.authorized:
         return render_template("login.html")
     try:
