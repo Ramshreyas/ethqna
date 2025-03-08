@@ -80,3 +80,4 @@ conda-meta/
 # PDF files
 *.pdf
 frontend/pending_verifications.json
+logs
