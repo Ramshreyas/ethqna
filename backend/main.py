@@ -4,11 +4,12 @@ import json
 import hashlib
 import yaml
 import importlib
-from fastapi import FastAPI, HTTPException, File, UploadFile, Depends
+from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Form
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
 from . import map as fc_map  # Import map.py from the same package
 
@@ -97,7 +98,8 @@ class Document(BaseModel):
     description: str = ""
 
 class DocumentCreate(BaseModel):
-    url: str            # Changed to str for consistency.
+    url: str
+    source: Optional[str] = None
 
 class QuerySelectAdvancedRequest(BaseModel):
     query: str
@@ -189,15 +191,41 @@ def process_page(url: str):
 def get_documents():
     return list(documents.values())
 
-@app.post("/documents", response_model=Document, summary="Add or update a document")
+@app.post("/documents/from_url", response_model=Document, summary="Add or update a document from url")
 def add_document(doc: DocumentCreate):
+    # Extract the top-level domain from the URL.
+    parsed_url = urlparse(doc.url)
+    domain = parsed_url.netloc
+
+    # Load (or create) the curated sources file.
+    SOURCES_FILE = os.path.join("data", "sources.json")
+    if not os.path.exists(SOURCES_FILE):
+        with open(SOURCES_FILE, "w") as f:
+            json.dump({}, f, indent=2)
+    with open(SOURCES_FILE, "r") as f:
+        sources = json.load(f)
+        
+    # Determine the source: use provided value; else, if domain exists in sources, use that; else, add it.
+    if doc.source:
+        source_to_use = doc.source
+    elif domain in sources:
+        source_to_use = sources[domain]["name"]
+    else:
+        sources[domain] = {"name": domain, "description": ""}
+        with open(SOURCES_FILE, "w") as f:
+            json.dump(sources, f, indent=2)
+        source_to_use = domain
+
+    # Check if the document already exists.
     existing_doc = None
     for d in documents.values():
         if d["url"] == str(doc.url):
             existing_doc = d
             break
 
+    # Compute hash from page content.
     new_hash, content = get_page_content_and_hash(doc.url)
+
     if existing_doc:
         if existing_doc["content_hash"] == new_hash:
             return existing_doc
@@ -207,8 +235,18 @@ def add_document(doc: DocumentCreate):
                 convert_url_to_pdf(doc.url, pdf_path)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
+            new_summary = llm_service.summarize(pdf_path)
+            try:
+                metadata = llm_service.generate_metadata(pdf_path)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Metadata extraction failed: {e}")
             existing_doc["content_hash"] = new_hash
-            existing_doc["description"] = llm_service.summarize(content)
+            existing_doc["description"] = new_summary
+            existing_doc["title"] = metadata.get("title", "Unknown Title")
+            existing_doc["date"] = metadata.get("date", None)
+            existing_doc["authors"] = metadata.get("authors", [])
+            existing_doc["tags"] = metadata.get("tags", [])
+            existing_doc["source"] = source_to_use
             save_json(DOCUMENTS_FILE, documents)
             return existing_doc
     else:
@@ -219,12 +257,23 @@ def add_document(doc: DocumentCreate):
             convert_url_to_pdf(doc.url, pdf_path)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+        # Recompute hash after PDF generation if desired, or reuse the one we computed earlier.
+        new_summary = llm_service.summarize(pdf_path)
+        try:
+            metadata = llm_service.generate_metadata(pdf_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Metadata extraction failed: {e}")
         new_doc = {
             "id": doc_id,
             "url": str(doc.url),
             "pdf_file": pdf_filename,
             "content_hash": new_hash,
-            "description": llm_service.summarize(content),
+            "description": new_summary,
+            "title": metadata.get("title", "Unknown Title"),
+            "date": metadata.get("date", None),
+            "authors": metadata.get("authors", []),
+            "tags": metadata.get("tags", []),
+            "source": source_to_use
         }
         documents[doc_id] = new_doc
         save_json(DOCUMENTS_FILE, documents)
@@ -242,11 +291,26 @@ def delete_document(doc_id: str):
     save_json(DOCUMENTS_FILE, documents)
     return {"detail": "Document deleted successfully"}
 
-@app.post("/upload", response_model=Document, summary="Upload a PDF file and generate its metadata")
-async def upload_pdf(file: UploadFile = File(...)):
+@app.post("/documents/from_pdf", response_model=Document, summary="Upload a PDF file and generate its metadata")
+async def upload_pdf(file: UploadFile = File(...), source: str = Form(...)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid file type. Only PDFs are accepted.")
     
+    # Load (or create) the curated sources file.
+    SOURCES_FILE = os.path.join("data", "sources.json")
+    if not os.path.exists(SOURCES_FILE):
+        with open(SOURCES_FILE, "w") as f:
+            json.dump({}, f, indent=2)
+    with open(SOURCES_FILE, "r") as f:
+        sources = json.load(f)
+    
+    # If the provided source is not in sources.json, add it.
+    if source not in sources:
+        sources[source] = {"name": source, "description": ""}
+        with open(SOURCES_FILE, "w") as f:
+            json.dump(sources, f, indent=2)
+    source_to_use = source
+
     doc_id = str(uuid.uuid4())
     pdf_filename = f"{doc_id}.pdf"
     pdf_path = os.path.join(PDF_DIR, pdf_filename)
@@ -263,17 +327,16 @@ async def upload_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compute file hash: {e}")
     
-    # Generate summary using LLM
+    # Generate summary using LLM.
     summary = llm_service.summarize(pdf_path)
 
-    # Generate metadata using LLM
+    # Generate metadata using LLM.
     try:
         metadata = llm_service.generate_metadata(pdf_path)
     except Exception as e:
         print(f"ERROR: Failed to extract metadata. {e}")
         raise HTTPException(status_code=500, detail=f"Metadata extraction failed: {e}")
 
-    # Ensure expected metadata fields exist
     new_doc = {
         "id": doc_id,
         "url": f"local://{pdf_filename}",
@@ -283,7 +346,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         "title": metadata.get("title", "Unknown Title"),
         "date": metadata.get("date", None),
         "authors": metadata.get("authors", []),
-        "tags": metadata.get("tags", [])
+        "tags": metadata.get("tags", []),
+        "source": source_to_use
     }
 
     documents[doc_id] = new_doc
