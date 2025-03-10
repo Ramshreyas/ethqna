@@ -270,10 +270,8 @@
       
       <div class="topic-panel">
         <label>Sources:</label>
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="sources" value="source1"> ETH Research</label>
-          <label><input type="checkbox" name="sources" value="source2"> EIPs</label>
-          <label><input type="checkbox" name="sources" value="source3"> EPS Wiki</label>
+        <div class="checkbox-group" id="sources-list">
+          <!-- Dynamic sources will be loaded here -->
         </div>
       </div>
       
@@ -364,6 +362,25 @@
         }
       });
     }
+
+    fetch("/sources")
+      .then(response => response.json())
+      .then(data => {
+        const sourcesListDiv = document.getElementById("sources-list");
+        sourcesListDiv.innerHTML = "";
+        for (const key in data) {
+          if (data.hasOwnProperty(key)) {
+            const source = data[key];
+            const label = document.createElement("label");
+            label.innerHTML = `<input type="checkbox" name="sources" value="${source.name}"> ${source.name}`;
+            sourcesListDiv.appendChild(label);
+          }
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching sources:", error);
+        document.getElementById("sources-list").innerHTML = "<p>Error loading sources.</p>";
+      });
 
     fetch("/documents")
       .then(response => response.json())

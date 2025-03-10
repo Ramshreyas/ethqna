@@ -86,7 +86,19 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-# --- New Endpoint for PDF Documents ---
+@app.route("/sources")
+def sources_list():
+    sources_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'sources.json')
+    if os.path.exists(sources_path):
+        try:
+            with open(sources_path, 'r') as f:
+                sources = json.load(f)
+            return jsonify(sources)
+        except Exception as e:
+            return jsonify({"error": f"Failed to load sources: {e}"}), 500
+    else:
+        return jsonify({"error": "Sources file not found"}), 404
+
 @app.route("/documents")
 def documents_list():
     documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')

@@ -96,6 +96,11 @@ class Document(BaseModel):
     pdf_file: str
     content_hash: str
     description: str = ""
+    title: str = ""
+    date: Optional[str] = None
+    authors: List[str] = []
+    tags: List[str] = []
+    source: str = ""
 
 class DocumentCreate(BaseModel):
     url: str
@@ -279,18 +284,6 @@ def add_document(doc: DocumentCreate):
         save_json(DOCUMENTS_FILE, documents)
         return new_doc
 
-@app.delete("/documents/{doc_id}", response_model=dict, summary="Delete a document")
-def delete_document(doc_id: str):
-    if doc_id not in documents:
-        raise HTTPException(status_code=404, detail="Document not found")
-    pdf_filename = documents[doc_id]["pdf_file"]
-    pdf_path = os.path.join(PDF_DIR, pdf_filename)
-    if os.path.exists(pdf_path):
-        os.remove(pdf_path)
-    del documents[doc_id]
-    save_json(DOCUMENTS_FILE, documents)
-    return {"detail": "Document deleted successfully"}
-
 @app.post("/documents/from_pdf", response_model=Document, summary="Upload a PDF file and generate its metadata")
 async def upload_pdf(file: UploadFile = File(...), source: str = Form(...)):
     if file.content_type != "application/pdf":
@@ -354,6 +347,18 @@ async def upload_pdf(file: UploadFile = File(...), source: str = Form(...)):
     save_json(DOCUMENTS_FILE, documents)
     
     return new_doc
+
+@app.delete("/documents/{doc_id}", response_model=dict, summary="Delete a document")
+def delete_document(doc_id: str):
+    if doc_id not in documents:
+        raise HTTPException(status_code=404, detail="Document not found")
+    pdf_filename = documents[doc_id]["pdf_file"]
+    pdf_path = os.path.join(PDF_DIR, pdf_filename)
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)
+    del documents[doc_id]
+    save_json(DOCUMENTS_FILE, documents)
+    return {"detail": "Document deleted successfully"}
 
 @app.post("/query/select_advanced", response_model=QuerySelectAdvancedResponse, summary="Select top 5 documents based on query")
 def query_select_advanced(request: QuerySelectAdvancedRequest):
