@@ -23,9 +23,37 @@ from oauthlib.oauth2.rfc6749.errors import TokenExpiredError
 import logging
 from logging.handlers import RotatingFileHandler
 
+# Import the prompt builder
+from LLM.providers.google.prompts import build_chat_prompt
+from LLM.providers.google.service import LLMService
+
 # Load environment variables from the project root .env
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
 load_dotenv(dotenv_path)
+
+# Load configuration from config/config.yaml
+def load_config(config_file='config/config.yaml'):
+    with open(config_file, 'r') as f:
+        return yaml.safe_load(f)
+
+# Get LLM provider from config
+def get_llm_provider():
+    """
+    Dynamically load and return an instance of LLMService based on the config.
+    Each provider module should export a concrete class named 'LLMService'
+    that implements summarize(text: str) -> str.
+    """
+    config = load_config()
+    provider_name = config.get("long_context_llm", "dummy").lower()
+    module_path = f"LLM.providers.{provider_name}.service"
+    try:
+        provider_module = importlib.import_module(module_path)
+        provider_class = getattr(provider_module, "LLMService")
+        return provider_class()
+    except Exception as e:
+        raise Exception(f"Error loading LLM provider '{provider_name}': {e}")
+
+llm_service = get_llm_provider()
 
 # Set development mode flag (set DEV_MODE=1 in your environment for local testing)
 DEV_MODE = os.environ.get('DEV_MODE', '0') == '1'
@@ -67,9 +95,6 @@ with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 gemini_api_key_env_var = config.get('gemini_api_key_env_var', 'GEMINI_API_KEY')
 api_key = os.getenv(gemini_api_key_env_var)
-
-# Import the prompt builder
-from prompts import build_prompt
 
 # --- Google OAuth Setup using Flask-Dance ---
 from flask_dance.contrib.google import make_google_blueprint, google
@@ -157,11 +182,13 @@ def index():
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("index.html", user=user_info)
 
+
 @app.route("/logout")
 def logout():
     if google_bp.token:
         del google_bp.token
     return redirect(url_for("index"))
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -180,44 +207,22 @@ def chat():
         print(f"Error reading PDF file at {pdf_path}: {e}", flush=True)
         return jsonify({"response": f"Error reading PDF: {e}", "page": None})
 
-    enhanced_prompt = build_prompt(user_message)
-    print(f"Built enhanced prompt: {enhanced_prompt}", flush=True)
-
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key=api_key)
+    enhanced_prompt = build_chat_prompt(user_message)
+    print(f"Built chat prompt: {enhanced_prompt}", flush=True)
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-                types.Part.from_bytes(data=pdf_data, mime_type='application/pdf'),
-                enhanced_prompt
-            ]
-        )
-        raw_response = response.text
-        print("Raw Gemini response:", raw_response, flush=True)
-        cleaned_response = raw_response
-        if cleaned_response.startswith("```"):
-            lines = cleaned_response.splitlines()
-            if lines and lines[0].strip().startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].strip().startswith("```"):
-                lines = lines[:-1]
-            cleaned_response = "\n".join(lines).strip()
-            print("Cleaned Gemini response:", cleaned_response, flush=True)
-        parsed_response = json.loads(cleaned_response)
-        answer_text = parsed_response.get("response", "")
-        page_number = parsed_response.get("page", None)
+        response = llm_service.chat(pdf_data, enhanced_prompt)
+        answer_text = response.get("response", "")
+        page_number = response.get("page", None)
         combined_response = f"Answer: {answer_text} (Page {page_number})"
     except Exception as e:
-        print("Error parsing Gemini response:", raw_response, flush=True)
-        combined_response = f"Error calling Gemini API or parsing response: {e}"
+        print("Error in LLM chat service:", e, flush=True)
+        combined_response = f"Error calling LLM chat service: {e}"
         page_number = None
 
     print(f"Returning response: {combined_response}", flush=True)
     return jsonify({'response': combined_response, 'page': page_number})
+
 
 @app.route("/pdf")
 def pdf():

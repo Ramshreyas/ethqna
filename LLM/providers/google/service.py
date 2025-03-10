@@ -74,3 +74,31 @@ class LLMService:
 
         return metadata
 
+    def chat(self, pdf_data: bytes, prompt: str) -> dict:
+        print("DEBUG: Processing chat request...", flush=True)
+        part = types.Part.from_bytes(data=pdf_data, mime_type='application/pdf')
+        contents = [part, prompt]
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=types.GenerateContentConfig(system_instruction=prompt),
+            contents=contents
+        )
+        raw_response = response.text.strip()
+        print("DEBUG: Gemini API chat response:", raw_response, flush=True)
+
+        # Remove code fences if present
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+
+        try:
+            result = json.loads(raw_response)
+        except Exception as e:
+            raise Exception(f"Error parsing chat response: {e}. Raw response: {raw_response}")
+
+        return result
