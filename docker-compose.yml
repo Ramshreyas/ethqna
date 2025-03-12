@@ -26,7 +26,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: ingest/Dockerfile
     container_name: ethqna-backend
     ports:
       - "8000:8000"
