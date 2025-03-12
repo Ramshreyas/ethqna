@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5001
 
 # Run the backend using the module flag (-m) so that relative imports work.
-CMD ["python", "-m", "backend.main"]
+CMD ["python", "-m", "ingest.main"]

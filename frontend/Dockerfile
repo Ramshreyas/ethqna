@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 EXPOSE 5000
 
 # Run the frontend Flask app, binding to all interfaces
-CMD ["python", "app.py", "--host=0.0.0.0"]
+CMD ["python", "-m", "frontend.app"]
