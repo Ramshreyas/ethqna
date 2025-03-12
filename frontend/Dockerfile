@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Switch to the frontend folder
-WORKDIR /app/frontend
+WORKDIR /app
 
 # Install dependencies from the project-level requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
