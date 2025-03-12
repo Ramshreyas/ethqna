@@ -253,8 +253,7 @@
         </div>
         <div class="chat-input">
           <input type="text" id="message-input" placeholder="Type your message..." />
-          <button onclick="sendMessage()">Send</button>
-          <div class="spinner" id="spinner"></div>
+          <button onclick="sendMessage()">Send</button><div class="spinner" id="spinner"></div>
         </div>
       </div>
       
@@ -294,6 +293,7 @@
       
       <div class="topic-panel">
         <button id="topic-submit" onclick="submitTopic()">Submit</button>
+        <div class="spinner" id="filter-spinner" style="display: none;"></div>
       </div>
       
       <hr class="divider">
@@ -301,9 +301,7 @@
       <div class="topic-panel">
         <label>Documents:</label>
         <div class="document-list" id="document-list">
-          <label><input type="checkbox" value="doc1"> Document 1</label>
-          <label><input type="checkbox" value="doc2"> Document 2</label>
-          <label><input type="checkbox" value="doc3"> Document 3</label>
+          <!-- Filtered documents will be loaded here -->
         </div>
       </div>
     </div>
@@ -335,6 +333,9 @@
         toggleBtn.innerHTML = ">>";
       }
     }
+    
+    // Global variable to hold the filtered documents returned from the backend
+    window.filteredDocuments = [];
 
     function submitTopic() {
       var checkboxes = document.querySelectorAll('input[name="sources"]:checked');
@@ -342,25 +343,66 @@
       var topic = document.getElementById("topic-input").value;
       var docCount = document.getElementById("doc-count").value;
       console.log("Selected Sources:", selectedSources, "Topic:", topic, "Return:", docCount, "documents");
-      // Functionality to filter and rank documents will be implemented later.
+
+      // Show the spinner for filtering
+      var spinner = document.getElementById("filter-spinner");
+      spinner.style.display = "block";
+
+      fetch("/query/filter_documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sources: selectedSources,
+          topic: topic,
+          doc_count: docCount
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        spinner.style.display = "none";
+        var docListDiv = document.getElementById("document-list");
+        docListDiv.innerHTML = "";
+        if (data.documents && data.documents.length > 0) {
+          // Store filtered documents globally
+          window.filteredDocuments = data.documents;
+          data.documents.forEach(function(doc) {
+            var label = document.createElement("label");
+            // Checkbox is checked by default, and use doc.title for the label text
+            label.innerHTML = `<input type="checkbox" name="docCheckbox" value="${doc.id}" checked> ${doc.title || "Document"}`;
+            // Add an event listener to update the horizontal tabs when checkbox state changes
+            label.querySelector("input").addEventListener('change', updateTabsFromCheckboxes);
+            docListDiv.appendChild(label);
+          });
+          // Populate horizontal tabs with all filtered documents (since all are checked initially)
+          updateTabsFromCheckboxes();
+        } else {
+          docListDiv.innerHTML = "<p>No documents found for this topic.</p>";
+          // Clear horizontal tabs if no documents are returned
+          document.getElementById("pdf-tabs").innerHTML = "";
+        }
+      })
+      .catch(error => {
+        spinner.style.display = "none";
+        console.error("Error filtering documents:", error);
+      });
     }
 
-    // New function to update the PDF viewer and active tab.
-    function updatePdfViewer(pdfFile, page) {
-      // Update the PDF viewer iframe.
-      var pdfViewer = document.getElementById("pdf-viewer");
-      pdfViewer.src = "/pdf?doc=" + pdfFile + "#page=" + page;
-      // Update the global variable.
-      selectedPdfFile = pdfFile;
-      // Update the active tab in the horizontal list.
-      var tabs = document.querySelectorAll(".tab");
-      tabs.forEach(function(tab) {
-        if (tab.getAttribute("data-pdf-file") === pdfFile) {
-          tab.classList.add("active");
-        } else {
-          tab.classList.remove("active");
+    // Update horizontal tabs based on checked documents in the side panel
+    function updateTabsFromCheckboxes() {
+      var checkedDocs = [];
+      var checkboxes = document.querySelectorAll('input[name="docCheckbox"]');
+      checkboxes.forEach(function(cb) {
+        if (cb.checked) {
+          // Find the corresponding document object using its id
+          var doc = window.filteredDocuments.find(d => d.id === cb.value);
+          if (doc) {
+            checkedDocs.push(doc);
+          }
         }
       });
+      // Use the existing populateTabs() function to update the horizontal list,
+      // but now use doc.title for the tab text.
+      populateTabs(checkedDocs);
     }
 
     fetch("/sources")
@@ -382,21 +424,21 @@
         document.getElementById("sources-list").innerHTML = "<p>Error loading sources.</p>";
       });
 
-    fetch("/documents")
-      .then(response => response.json())
-      .then(data => {
-        if (data.documents && data.documents.length > 0) {
-          populateTabs(data.documents);
-          // Preselect the first document and update PDF viewer.
-          selectedPdfFile = data.documents[0].pdf_file;
-          document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
-        } else {
-          document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
-        }
-      })
-      .catch(error => {
-        console.error("Error fetching documents:", error);
-      });
+    // fetch("/documents")
+    //   .then(response => response.json())
+    //   .then(data => {
+    //     if (data.documents && data.documents.length > 0) {
+    //       populateTabs(data.documents);
+    //       // Preselect the first document and update PDF viewer.
+    //       selectedPdfFile = data.documents[0].pdf_file;
+    //       document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
+    //     } else {
+    //       document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
+    //     }
+    //   })
+    //   .catch(error => {
+    //     console.error("Error fetching documents:", error);
+    //   });
 
     function populateTabs(documents) {
       var tabsContainer = document.getElementById("pdf-tabs");

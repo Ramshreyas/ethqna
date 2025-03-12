@@ -72,6 +72,29 @@ Return the result as a JSON array of objects, where each object follows this sch
 Ensure that the output is valid JSON.
 """
 
+FILTER_QUERY_DOCUMENTS_PROMPT = """
+You are given a corpus of document metadata in JSON format:
+{documents_json}
+
+And a user query:
+"{query}"
+
+Using the above information, select and rank the top {doc_count} documents that best match the query.
+Return the result as a JSON array of objects, where each object follows this schema:
+{{
+  "id": string,
+  "url": string,
+  "pdf_file": string,
+  "title": string,
+  "content_hash": string,
+  "description": string,
+  "relevance": number
+}}
+
+Ensure that the output is valid JSON.
+"""
+
+
 def build_chat_prompt(user_message: str) -> str:
     """
     Build the prompt to instruct Gemini to generate a JSON response with two fields:

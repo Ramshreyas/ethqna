@@ -230,5 +230,41 @@ def pdf():
     pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     return send_from_directory(directory, pdf_file)
 
+@app.route("/query/filter_documents", methods=["POST"])
+def filter_documents():
+    req_data = request.get_json()
+    topic = req_data.get("topic", "")
+    selected_sources = req_data.get("sources", [])  # expects an array of source names
+    doc_count = req_data.get("doc_count", 3)
+
+    # Load documents from the JSON file
+    documents_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', 'documents.json')
+    if not os.path.exists(documents_path):
+        return jsonify({"error": "Documents file not found"}), 404
+    try:
+        with open(documents_path, "r") as f:
+            docs = json.load(f)
+    except Exception as e:
+        return jsonify({"error": f"Error loading documents: {e}"}), 500
+
+    # Filter documents based on the selected sources
+    filtered_docs = [doc for doc in docs.values() if doc.get("source", "") in selected_sources]
+    documents_json = json.dumps(filtered_docs)
+
+    # Build the prompt using the new prompt constant
+    from LLM.providers.google.prompts import FILTER_QUERY_DOCUMENTS_PROMPT
+    prompt = FILTER_QUERY_DOCUMENTS_PROMPT.format(
+        documents_json=documents_json,
+        query=topic,
+        doc_count=doc_count
+    )
+
+    try:
+        result = llm_service.filter_documents(documents_json, prompt)
+    except Exception as e:
+        return jsonify({"error": f"LLM service error: {e}"}), 500
+
+    return jsonify({"documents": result})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
