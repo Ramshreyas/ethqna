@@ -158,6 +158,8 @@
       transition: transform 0.3s ease-in-out;
       transform: translateX(0);
       padding: 15px;
+      display: flex;
+      flex-direction: column;
     }
     .left-panel.hidden {
       transform: translateX(-250px);
@@ -222,7 +224,7 @@
       margin: 10px 0;
     }
     .document-list {
-      max-height: 200px;
+      flex: 1;
       overflow-y: auto;
     }
     .document-list label {
