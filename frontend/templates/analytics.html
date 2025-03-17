@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analytics (Dark Mode)</title>
+  <!-- Plotly JS for interactive charts -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <style>
+    /* Basic dark mode styling */
+    body {
+      background-color: #1E1E1E;
+      color: #FFF;
+      font-family: "Open Sans", sans-serif;
+      margin: 0; padding: 0;
+    }
+
+    h1, h2 {
+      color: #FFD700; /* a gold-ish highlight color */
+      margin: 16px 0 8px 0;
+    }
+
+    .container {
+      width: 90%;
+      margin: 0 auto;
+      max-width: 1200px;
+      padding: 20px;
+    }
+
+    label {
+      color: #CCC;
+    }
+
+    select, button {
+      color: #FFF;
+      background-color: #333;
+      border: 1px solid #666;
+      padding: 6px 10px;
+      margin-right: 8px;
+    }
+    select:focus, button:focus {
+      outline: 1px solid #999;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 8px;
+    }
+    th {
+      background-color: #333;
+      color: #FFF;
+    }
+
+    #analyticsSummary p {
+      margin: 4px 0;
+    }
+
+    /* Basic styling for Plotly containers in dark mode */
+    .plotly-graph-div {
+      background-color: #2A2A2A;
+      border: 1px solid #555;
+      margin-top: 16px;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Ecosystem Analytics</h1>
+    <p>Welcome, {{ user.name }} ({{ user.email }})</p>
+
+    <p>Select a source below to filter documents:</p>
+    <label for="sourceSelect">Filter by Source:</label>
+    <select id="sourceSelect">
+      <option value="">-- All Sources --</option>
+      <!-- Hardcode or dynamically load. Example: -->
+      <option value="vitalik.eth.limo">vitalik.eth.limo</option>
+      <option value="Reddit AMA">Reddit AMA</option>
+      <option value="Conversations">Conversations</option>
+      <option value="local://">local:// (All local sources)</option>
+    </select>
+
+    <button id="fetchBtn">Fetch Analytics</button>
+
+    <!-- Summaries -->
+    <h2>Analytics Summary</h2>
+    <div id="analyticsSummary"></div>
+
+    <!-- Charts -->
+    <h2>Meetings Held Over Time</h2>
+    <div id="meetingChart" class="plotly-graph-div" style="height:400px;"></div>
+
+    <h2>Topics (Tags) Distribution</h2>
+    <div id="tagsChart" class="plotly-graph-div" style="height:400px;"></div>
+
+    <!-- Documents Table -->
+    <h2>Filtered Documents</h2>
+    <table id="docsTable">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Source</th>
+          <th>Date</th>
+          <th>Authors</th>
+          <th>Tags</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Dynamically populated -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const fetchBtn = document.getElementById('fetchBtn');
+    const sourceSelect = document.getElementById('sourceSelect');
+    const analyticsSummary = document.getElementById('analyticsSummary');
+    const docsTableBody = document.querySelector('#docsTable tbody');
+
+    fetchBtn.addEventListener('click', async () => {
+      const sourceValue = sourceSelect.value.trim();
+      const url = sourceValue
+        ? `/analytics/data?source=${encodeURIComponent(sourceValue)}`
+        : `/analytics/data`;
+
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.error) {
+          analyticsSummary.innerHTML = `<p style="color:red;">${data.error}</p>`;
+          docsTableBody.innerHTML = "";
+          // Clear charts
+          Plotly.purge('meetingChart');
+          Plotly.purge('tagsChart');
+          return;
+        }
+
+        // Show summary
+        const { total_docs, unique_authors_count, earliest_date, latest_date } = data.analytics;
+        analyticsSummary.innerHTML = `
+          <p><strong>Total Documents:</strong> ${total_docs}</p>
+          <p><strong>Unique Authors:</strong> ${unique_authors_count}</p>
+          <p><strong>Earliest Date:</strong> ${earliest_date}</p>
+          <p><strong>Latest Date:</strong> ${latest_date}</p>
+        `;
+
+        // Populate table
+        docsTableBody.innerHTML = "";
+        const documents = data.documents || [];
+        documents.forEach(doc => {
+          const row = document.createElement('tr');
+          const title = doc.title || "Untitled";
+          const source = doc.source || "";
+          const date = doc.date || "";
+          const authors = doc.authors ? doc.authors.join(", ") : "";
+          const tags = doc.tags ? doc.tags.join(", ") : "";
+
+          row.innerHTML = `
+            <td>${title}</td>
+            <td>${source}</td>
+            <td>${date}</td>
+            <td>${authors}</td>
+            <td>${tags}</td>
+          `;
+          docsTableBody.appendChild(row);
+        });
+
+        // Build the two charts:
+        buildMeetingChart(documents);
+        buildTagsChart(documents);
+
+      } catch (err) {
+        analyticsSummary.innerHTML = `<p style="color:red;">Error fetching analytics: ${err}</p>`;
+        docsTableBody.innerHTML = "";
+        Plotly.purge('meetingChart');
+        Plotly.purge('tagsChart');
+      }
+    });
+
+    /**
+     * Meetings Held Over Time
+     * We'll parse each doc's date, group by Month (YYYY-MM),
+     * and plot a line chart of doc count over time.
+     */
+    function buildMeetingChart(docs) {
+      // Group by month
+      const monthCounts = {};
+      docs.forEach(doc => {
+        const dateStr = doc.date || "";
+        if (!dateStr) return;
+
+        // Attempt to parse
+        const parts = dateStr.split("-");
+        if (parts.length < 2) return; // not a valid YYYY-MM-DD
+        const yyyy = parts[0];
+        const mm = parts[1];
+        const yearMonth = `${yyyy}-${mm}`; // e.g. "2025-03"
+
+        if (!monthCounts[yearMonth]) {
+          monthCounts[yearMonth] = 0;
+        }
+        monthCounts[yearMonth]++;
+      });
+
+      // Convert to arrays, sorted by date
+      const sortedKeys = Object.keys(monthCounts).sort(); // sort "2024-01", "2024-02" ...
+      const xVals = sortedKeys;
+      const yVals = sortedKeys.map(k => monthCounts[k]);
+
+      const trace = {
+        x: xVals,
+        y: yVals,
+        mode: 'lines+markers',
+        type: 'scatter',
+        line: { color: '#FFD700' },
+        marker: { color: '#FFD700' },
+        name: 'Meetings Over Time'
+      };
+
+      const layout = {
+        plot_bgcolor: '#2A2A2A',
+        paper_bgcolor: '#2A2A2A',
+        font: { color: '#FFF' },
+        xaxis: { title: 'Month (YYYY-MM)' },
+        yaxis: { title: 'Number of Documents' },
+        margin: { l: 50, r: 20, b: 50, t: 30 }
+      };
+
+      Plotly.newPlot('meetingChart', [trace], layout, {displayModeBar: false});
+    }
+
+    /**
+     * Topics (Tags) Distribution
+     * We'll gather all tags across docs, count them, and display a bar chart.
+     */
+    function buildTagsChart(docs) {
+      const tagCounts = {};
+      docs.forEach(doc => {
+        if (!doc.tags) return;
+        doc.tags.forEach(tag => {
+          if (!tagCounts[tag]) {
+            tagCounts[tag] = 0;
+          }
+          tagCounts[tag]++;
+        });
+      });
+
+      // Convert to array of {tag, count}, sorted descending
+      const tagArr = Object.keys(tagCounts).map(tag => {
+        return { tag, count: tagCounts[tag] };
+      }).sort((a, b) => b.count - a.count);
+
+      const xVals = tagArr.map(t => t.tag);
+      const yVals = tagArr.map(t => t.count);
+
+      const trace = {
+        x: xVals,
+        y: yVals,
+        type: 'bar',
+        marker: { color: '#00BFFF' },
+        name: 'Tag Distribution'
+      };
+
+      const layout = {
+        plot_bgcolor: '#2A2A2A',
+        paper_bgcolor: '#2A2A2A',
+        font: { color: '#FFF' },
+        xaxis: {
+          title: 'Tag',
+          automargin: true
+        },
+        yaxis: {
+          title: 'Occurrences',
+          automargin: true
+        },
+        margin: { l: 50, r: 20, b: 120, t: 30 }
+      };
+
+      Plotly.newPlot('tagsChart', [trace], layout, {displayModeBar: false});
+    }
+
+    // Optionally, auto-fetch on page load
+    // fetchBtn.click();
+  </script>
+</body>
+</html>

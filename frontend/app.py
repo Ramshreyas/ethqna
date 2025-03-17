@@ -266,5 +266,100 @@ def filter_documents():
 
     return jsonify({"documents": result})
 
+@app.route("/analytics")
+def analytics():
+    """
+    Renders the analytics page (analytics.html).
+    Requires user to be logged in with an @ethereum.org email.
+    """
+    if DEV_MODE:
+        user_info = {"email": "local@test.com", "name": "Local Tester"}
+        return render_template("analytics.html", user=user_info)
+
+    if not google.authorized:
+        return render_template("login.html")
+
+    try:
+        resp = google.get("/oauth2/v2/userinfo")
+    except TokenExpiredError:
+        return redirect(url_for("google.login"))
+    except Exception:
+        return redirect(url_for("google.login"))
+
+    if not resp.ok:
+        return redirect(url_for("google.login"))
+
+    user_info = resp.json()
+    email = user_info.get("email", "")
+    if not email.endswith("@ethereum.org"):
+        return "Access denied: You must use an ethereum.org email", 403
+
+    return render_template("analytics.html", user=user_info)
+
+
+@app.route("/analytics/data", methods=["GET"])
+def analytics_data():
+    """
+    Provides JSON-aggregated analytics from documents.json,
+    optionally filtered by 'source'.
+    """
+    source_filter = request.args.get("source", "")  # e.g. "vitalik.eth.limo"
+
+    documents_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "data",
+        "pdf_sources",
+        "documents.json"
+    )
+    if not os.path.exists(documents_path):
+        return jsonify({"error": "documents.json not found"}), 404
+
+    try:
+        with open(documents_path, "r") as f:
+            docs_dict = json.load(f)
+    except Exception as e:
+        return jsonify({"error": f"Error reading documents.json: {e}"}), 500
+
+    # Convert to list of doc objects
+    documents = list(docs_dict.values())
+
+    # If there's a source_filter, only keep docs whose 'source' matches
+    if source_filter:
+        documents = [d for d in documents if d.get("source", "") == source_filter]
+
+    total_docs = len(documents)
+
+    # Gather all authors
+    all_authors = set()
+    for doc in documents:
+        authors = doc.get("authors", [])
+        for a in authors:
+            all_authors.add(a)
+    unique_authors_count = len(all_authors)
+
+    # Earliest & latest date
+    dates = []
+    for doc in documents:
+        date_str = doc.get("date", "")
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            dates.append(dt)
+        except:
+            pass
+    earliest = min(dates).strftime("%Y-%m-%d") if dates else "N/A"
+    latest = max(dates).strftime("%Y-%m-%d") if dates else "N/A"
+
+    # Return the docs + basic summary
+    return jsonify({
+        "analytics": {
+            "total_docs": total_docs,
+            "unique_authors_count": unique_authors_count,
+            "earliest_date": earliest,
+            "latest_date": latest
+        },
+        "documents": documents
+    })
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
