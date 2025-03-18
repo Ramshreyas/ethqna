@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Two-Panel Layout (Checkbox Sources)</title>
+  <title>Two-Panel Layout (Analytics with Tiling)</title>
   <style>
     /* Basic reset + dark mode */
     html, body {
@@ -25,23 +25,22 @@
       background-color: #2A2A2A;
       box-sizing: border-box;
       transition: width 0.3s ease-in-out;
-      overflow: hidden;   /* anything beyond boundary is hidden */
+      overflow: hidden;   /* hide overflow when collapsed */
     }
-    /* Collapsed: narrower width */
     .sidebar.collapsed {
       width: 60px;
     }
 
-    /* Header in the side panel */
+    /* Sidebar header */
     .sidebar-header {
       display: flex;
       align-items: center;
-      justify-content: flex-end; /* push button to the right */
+      justify-content: flex-end; /* push toggle button to the right */
       background-color: #333;
       padding: 10px;
     }
 
-    /* The rest of the side panel content (hidden when collapsed) */
+    /* Content in the side panel (hidden if collapsed) */
     .sidebar-content {
       padding: 10px;
     }
@@ -74,16 +73,14 @@
       overflow-y: auto;
       background-color: #1E1E1E;
     }
-    /* When sidebar is expanded, shift main content by 250px */
     .main-content.with-sidebar {
-      margin-left: 250px;
+      margin-left: 250px; /* default expanded width */
     }
-    /* When the sidebar is collapsed, shift by 60px */
     .sidebar.collapsed ~ .main-content.with-sidebar {
-      margin-left: 60px;
+      margin-left: 60px;  /* collapsed width */
     }
 
-    /* Title styling: left-aligned with some padding */
+    /* Title styling in the main panel */
     h1.main-title {
       margin: 0;
       padding: 20px 0 10px 20px; /* top, right, bottom, left */
@@ -93,7 +90,40 @@
       text-align: left;
     }
 
-    /* Simple styling for the source checkboxes */
+    /* Container that will hold our tiled panels */
+    #tilesContainer {
+      /* We'll use a grid layout to tile them */
+      display: grid;
+      grid-gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-auto-rows: minmax(200px, auto);
+      padding: 0 20px 20px 20px; /* some padding around the edges */
+    }
+
+    /* Each tile is a resizable "panel" */
+    .tile-panel {
+      background-color: #2A2A2A;
+      border: 1px solid #444;
+      border-radius: 4px;
+      resize: both;
+      overflow: auto;
+      min-width: 150px;
+      min-height: 100px;
+      position: relative;
+    }
+
+    .tile-panel .panel-content {
+      padding: 10px;
+    }
+
+    /* Titles for the checkbox lists in the side panel */
+    .list-title {
+      color: #FFD700;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    /* Basic styling for checkboxes and button */
     .checkbox-group label {
       display: block;
       margin-bottom: 5px;
@@ -101,7 +131,6 @@
     .checkbox-group input[type="checkbox"] {
       margin-right: 6px;
     }
-
     button {
       width: 100%;
       box-sizing: border-box;
@@ -113,13 +142,11 @@
       cursor: pointer;
     }
 
-    /* Placeholder in main content */
-    .placeholder {
-      margin-top: 100px;
-      text-align: left;
-      font-size: 1.2rem;
-      color: #DDD;
-      padding: 0 20px;
+    /* Divider (hr) styling for dark mode */
+    .divider {
+      border: 0;
+      border-top: 1px solid #444;
+      margin: 10px 0;
     }
   </style>
 </head>
@@ -130,23 +157,31 @@
       <button id="toggleSidebarBtn" class="toggle-btn">&#9776;</button>
     </div>
     <div class="sidebar-content">
-      <p>Select Source(s):</p>
-      <div class="checkbox-group">
+      <!-- Title for the first list -->
+      <div class="list-title">Select Source(s):</div>
+      <div class="checkbox-group" id="sourcesList">
         <label><input type="checkbox" name="sources" value="vitalik.eth.limo"> vitalik.eth.limo</label>
         <label><input type="checkbox" name="sources" value="Reddit AMA"> Reddit AMA</label>
         <label><input type="checkbox" name="sources" value="Conversations"> Conversations</label>
         <label><input type="checkbox" name="sources" value="local://"> local:// (All local sources)</label>
       </div>
+
       <button id="fetchBtn">Fetch Analytics</button>
+
+      <!-- Divider between button and next list -->
+      <hr class="divider" />
+
+      <!-- The "Available Analytics" list title + checkboxes will be inserted here on fetch -->
+      <div class="list-title" id="analyticsListTitle" style="display: none;">Available Analytics:</div>
+      <div id="vizListContainer"></div>
     </div>
   </div>
 
   <!-- Main Content -->
   <div id="mainContent" class="main-content with-sidebar">
     <h1 class="main-title">Ecosystem Analytics</h1>
-    <div class="placeholder">
-      <p>Empty Main Panel</p>
-    </div>
+    <!-- A container for the tiled panels -->
+    <div id="tilesContainer"></div>
   </div>
 
   <script>
@@ -155,10 +190,128 @@
     const toggleBtn = document.getElementById('toggleSidebarBtn');
 
     toggleBtn.addEventListener('click', () => {
-      // Toggle collapsed on the sidebar
       sidebar.classList.toggle('collapsed');
-      // The margin shift is handled by the sibling selector in CSS
     });
+
+    const fetchBtn = document.getElementById('fetchBtn');
+    const vizListContainer = document.getElementById('vizListContainer');
+    const analyticsListTitle = document.getElementById('analyticsListTitle');
+    const tilesContainer = document.getElementById('tilesContainer');
+
+    // On "Fetch Analytics"...
+    fetchBtn.addEventListener('click', () => {
+      // Gather selected sources (not used in this dummy example)
+      const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
+      const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
+      console.log("Selected sources:", selectedSources);
+
+      // Suppose we get some "visualizations" to show
+      const visualizations = getDummyVisualizations();
+      if (visualizations.length > 0) {
+        analyticsListTitle.style.display = "block"; // show heading
+        vizListContainer.innerHTML = "";
+
+        const checkboxGroup = document.createElement('div');
+        checkboxGroup.classList.add('checkbox-group');
+
+        // For each "viz", we create a checkbox
+        visualizations.forEach(viz => {
+          const label = document.createElement('label');
+          label.innerHTML = `
+            <input type="checkbox" name="vizCheckbox" value="${viz.file}" checked>
+            ${viz.title} (${viz.description})
+          `;
+          checkboxGroup.appendChild(label);
+
+          // We'll handle the initial checked state => load the panel
+          loadPanel(viz.file);
+
+          // Then, listen for changes
+          const checkbox = label.querySelector('input[type="checkbox"]');
+          checkbox.addEventListener('change', e => {
+            if (e.target.checked) {
+              loadPanel(viz.file);
+            } else {
+              removePanel(viz.file);
+            }
+          });
+        });
+
+        vizListContainer.appendChild(checkboxGroup);
+      } else {
+        analyticsListTitle.style.display = "none";
+        vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
+      }
+    });
+
+    /**
+     * Dummy function returning an array of objects describing
+     * the analytics panels we want to load.
+     * 'file' is the path to the partial HTML snippet (in /analytics/).
+     */
+    function getDummyVisualizations() {
+      return [
+        {
+          title: "Docs Timeline",
+          description: "Documents over time",
+          file: "analytics/panel_one.html"
+        },
+        {
+          title: "Tags Pie Chart",
+          description: "Distribution of tags",
+          file: "analytics/panel_two.html"
+        },
+        {
+          title: "Authors Bar",
+          description: "Most active authors",
+          file: "analytics/panel_three.html"
+        },
+        {
+          title: "Misc Chart",
+          description: "Placeholder visualization",
+          file: "analytics/panel_four.html"
+        }
+      ];
+    }
+
+    /**
+     * Load a panel from the given file path,
+     * create a .tile-panel for it, and insert into #tilesContainer
+     */
+    function loadPanel(panelFile) {
+      // If it's already loaded, skip
+      const existing = document.getElementById('tile-' + panelFile);
+      if (existing) return;
+
+      // Create a tile
+      const tile = document.createElement('div');
+      tile.classList.add('tile-panel');
+      tile.id = 'tile-' + panelFile;
+
+      // Fetch the partial
+      fetch(panelFile)
+        .then(resp => resp.text())
+        .then(htmlSnippet => {
+          tile.innerHTML = htmlSnippet;
+        })
+        .catch(err => {
+          tile.innerHTML = `<div class="panel-content"><strong>Error loading ${panelFile}:</strong> ${err}</div>`;
+        });
+
+      // Add the tile to #tilesContainer
+      tilesContainer.appendChild(tile);
+    }
+
+    /**
+     * Remove the tile for the given panelFile
+     */
+    function removePanel(panelFile) {
+      const tileId = 'tile-' + panelFile;
+      const tile = document.getElementById(tileId);
+      if (tile) {
+        tile.remove();
+      }
+    }
   </script>
 </body>
 </html>
