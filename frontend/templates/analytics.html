@@ -114,6 +114,7 @@
       border: 1px solid #444;
       border-radius: 4px;
       padding: 10px;
+      aspect-ratio: 1 / 0.5;
     }
     .tile-panel .panel-content {
       padding: 4px;
@@ -193,93 +194,97 @@
 
     // On "Fetch Analytics"...
     fetchBtn.addEventListener('click', () => {
+      // Clear previously loaded panels
+      tilesContainer.innerHTML = "";
+      
       // Gather selected sources
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
       console.log("Selected sources:", selectedSources);
 
-      // Dummy function returning some 'visualizations'
-      const visualizations = getDummyVisualizations();
-      if (visualizations.length > 0) {
-        analyticsListTitle.style.display = "block"; // show heading
-        vizListContainer.innerHTML = "";            // clear previous
+      // Call our API endpoint (using /fetch_analytics)
+      fetch("/fetch_analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources: selectedSources })
+      })
+        .then(resp => resp.json())
+        .then(data => {
+          if (data.error) {
+            analyticsListTitle.style.display = "none";
+            vizListContainer.innerHTML = `<p style="color: #CCC;">${data.error}</p>`;
+            return;
+          }
+          
+          const visualizations = data.visualizations || [];
+          if (visualizations.length > 0) {
+            analyticsListTitle.style.display = "block";
+            vizListContainer.innerHTML = "";
+            const checkboxGroup = document.createElement('div');
+            checkboxGroup.classList.add('checkbox-group');
 
-        const checkboxGroup = document.createElement('div');
-        checkboxGroup.classList.add('checkbox-group');
+            visualizations.forEach(viz => {
+              // Determine panel path: if viz.path is not a string, assume it's an object with a 'path' key.
+              const panelPath = typeof viz.path === "string" ? viz.path : viz.path.path;
+              const label = document.createElement('label');
+              label.innerHTML = `
+                <input type="checkbox" name="vizCheckbox" value="${panelPath}" checked>
+                ${viz.title}
+              `;
+              checkboxGroup.appendChild(label);
 
-        visualizations.forEach(viz => {
-          const label = document.createElement('label');
-          label.innerHTML = `
-            <input type="checkbox" name="vizCheckbox" value="${viz.file}" checked>
-            ${viz.title} (${viz.description})
-          `;
-          checkboxGroup.appendChild(label);
+              // Initially load the panel
+              loadPanel(panelPath);
 
-          // Initially load the panel
-          loadPanel(viz.file);
+              // Listen for checkbox changes
+              const checkbox = label.querySelector('input[type="checkbox"]');
+              checkbox.addEventListener('change', e => {
+                if (e.target.checked) {
+                  loadPanel(panelPath);
+                } else {
+                  removePanel(panelPath);
+                }
+              });
+            });
 
-          // Listen for checkbox changes
-          const checkbox = label.querySelector('input[type="checkbox"]');
-          checkbox.addEventListener('change', e => {
-            if (e.target.checked) {
-              loadPanel(viz.file);
-            } else {
-              removePanel(viz.file);
-            }
-          });
+            vizListContainer.appendChild(checkboxGroup);
+          } else {
+            analyticsListTitle.style.display = "none";
+            vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
+          }
+        })
+        .catch(error => {
+          analyticsListTitle.style.display = "none";
+          vizListContainer.innerHTML = `<p style='color: #CCC;'>Error: ${error}</p>`;
+          console.error("Error fetching analytics:", error);
         });
-
-        vizListContainer.appendChild(checkboxGroup);
-      } else {
-        analyticsListTitle.style.display = "none";
-        vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
-      }
     });
-
-    /**
-     * Dummy function returning an array of objects describing
-     * the analytics panels we want to load.
-     * 'file' is the relative path to the HTML snippet (in templates/analytics/).
-     */
-    function getDummyVisualizations() {
-      return [
-        { title: "Docs Timeline", description: "Documents over time", file: "analytics/panel_one.html" },
-        { title: "Tags Pie Chart", description: "Distribution of tags", file: "analytics/panel_two.html" },
-        { title: "Authors Bar", description: "Most active authors", file: "analytics/panel_three.html" },
-        { title: "Misc Chart", description: "Placeholder visualization", file: "analytics/panel_four.html" }
-      ];
-    }
 
     /**
      * Load a panel from the given file path,
      * create a .tile-panel for it, and insert it into #tilesContainer.
      */
-    function loadPanel(panelFile) {
-      // If it's already loaded, skip it.
-      if (document.getElementById('tile-' + panelFile)) return;
-
+    function loadPanel(panelPath) {
+      if (document.getElementById('tile-' + panelPath)) return;
       const tile = document.createElement('div');
       tile.classList.add('tile-panel');
-      tile.id = 'tile-' + panelFile;
-
-      // Fetch the panel snippet.
-      fetch(panelFile)
+      tile.id = 'tile-' + panelPath;
+      fetch(panelPath)
         .then(resp => resp.text())
         .then(htmlSnippet => {
           tile.innerHTML = htmlSnippet;
         })
         .catch(err => {
-          tile.innerHTML = `<div class="panel-content"><strong>Error loading ${panelFile}:</strong> ${err}</div>`;
+          tile.innerHTML = `<div class="panel-content"><strong>Error loading ${panelPath}:</strong> ${err}</div>`;
         });
-
       tilesContainer.appendChild(tile);
     }
 
     /**
-     * Remove the tile for the given panel file.
+     * Remove the tile for the given panel path.
      */
-    function removePanel(panelFile) {
-      const tile = document.getElementById('tile-' + panelFile);
+    function removePanel(panelPath) {
+      const tile = document.getElementById('tile-' + panelPath);
       if (tile) tile.remove();
     }
   </script>

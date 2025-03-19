@@ -363,7 +363,44 @@ def analytics_data():
 
 @app.route('/analytics/<path:filename>')
 def analytics_static(filename):
+    print(f"Attempting to serve analytics file: {filename}", flush = True)
     return send_from_directory(os.path.join(app.root_path, 'templates', 'analytics'), filename)
+
+@app.route("/fetch_analytics", methods=["POST"])
+def api_analytics():
+    """
+    Expects a JSON payload like: { "sources": ["vitalik.eth.limo", "Reddit AMA"] }
+    Reads analytics.json from /data/pdf_sources and returns the list of visualization objects
+    for the selected sources.
+    """
+    data = request.get_json() or {}
+    selected_sources = data.get("sources", [])
+    
+    analytics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "pdf_sources", "analytics.json")
+    if not os.path.exists(analytics_path):
+        return jsonify({"error": "analytics.json not found"}), 404
+    
+    try:
+        with open(analytics_path, "r") as f:
+            analytics_data = json.load(f)
+    except Exception as e:
+        return jsonify({"error": f"Error reading analytics.json: {e}"}), 500
+    
+    result = []
+    for source in selected_sources:
+        result.extend(analytics_data.get(source, []))
+    
+    # Remove duplicates from result (each item is a dict with 'title' and 'path')
+    seen = set()
+    unique = []
+    for item in result:
+        key = (item.get("title"), item.get("path"))
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    result = unique
+
+    return jsonify({"visualizations": result})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
