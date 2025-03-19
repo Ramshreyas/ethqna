@@ -361,5 +361,9 @@ def analytics_data():
         "documents": documents
     })
 
+@app.route('/analytics/<path:filename>')
+def analytics_static(filename):
+    return send_from_directory(os.path.join(app.root_path, 'templates', 'analytics'), filename)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

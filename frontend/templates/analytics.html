@@ -66,54 +66,57 @@
       position: absolute;
       top: 0; 
       left: 0;
-      width: 100%;
       height: 100%;
       box-sizing: border-box;
-      transition: margin-left 0.3s ease-in-out;
+      transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
       overflow-y: auto;
       background-color: #1E1E1E;
+      padding: 20px;
     }
     .main-content.with-sidebar {
-      margin-left: 250px; /* default expanded width */
+      left: 250px;
+      width: calc(100% - 250px);
     }
     .sidebar.collapsed ~ .main-content.with-sidebar {
-      margin-left: 60px;  /* collapsed width */
+      left: 60px;
+      width: calc(100% - 60px);
     }
 
     /* Title styling in the main panel */
     h1.main-title {
       margin: 0;
-      padding: 20px 0 10px 20px; /* top, right, bottom, left */
+      padding: 20px 0 10px 20px;
       font-size: 1.5rem;
       font-weight: normal;
       color: #FFD700;
       text-align: left;
     }
 
-    /* Container that will hold our tiled panels */
-    #tilesContainer {
-      /* We'll use a grid layout to tile them */
-      display: grid;
-      grid-gap: 1rem;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      grid-auto-rows: minmax(200px, auto);
-      padding: 0 20px 20px 20px; /* some padding around the edges */
+    /* Divider for main panel */
+    .divider {
+      border: 0;
+      border-top: 1px solid #444;
+      margin: 0 20px 20px 20px;
     }
 
-    /* Each tile is a resizable "panel" */
+    /* Container for the tiled panels using a 2-col grid */
+    #tilesContainer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 1rem;
+      padding: 0 20px 20px 20px;
+      box-sizing: border-box;
+    }
+
+    /* Each tile is a simple panel */
     .tile-panel {
       background-color: #2A2A2A;
       border: 1px solid #444;
       border-radius: 4px;
-      resize: both;
-      overflow: auto;
-      min-width: 150px;
-      min-height: 100px;
-      position: relative;
-    }
-
-    .tile-panel .panel-content {
       padding: 10px;
+    }
+    .tile-panel .panel-content {
+      padding: 4px;
     }
 
     /* Titles for the checkbox lists in the side panel */
@@ -141,13 +144,6 @@
       color: #FFF;
       cursor: pointer;
     }
-
-    /* Divider (hr) styling for dark mode */
-    .divider {
-      border: 0;
-      border-top: 1px solid #444;
-      margin: 10px 0;
-    }
   </style>
 </head>
 <body>
@@ -157,7 +153,6 @@
       <button id="toggleSidebarBtn" class="toggle-btn">&#9776;</button>
     </div>
     <div class="sidebar-content">
-      <!-- Title for the first list -->
       <div class="list-title">Select Source(s):</div>
       <div class="checkbox-group" id="sourcesList">
         <label><input type="checkbox" name="sources" value="vitalik.eth.limo"> vitalik.eth.limo</label>
@@ -168,10 +163,8 @@
 
       <button id="fetchBtn">Fetch Analytics</button>
 
-      <!-- Divider between button and next list -->
       <hr class="divider" />
 
-      <!-- The "Available Analytics" list title + checkboxes will be inserted here on fetch -->
       <div class="list-title" id="analyticsListTitle" style="display: none;">Available Analytics:</div>
       <div id="vizListContainer"></div>
     </div>
@@ -180,7 +173,7 @@
   <!-- Main Content -->
   <div id="mainContent" class="main-content with-sidebar">
     <h1 class="main-title">Ecosystem Analytics</h1>
-    <!-- A container for the tiled panels -->
+    <hr class="divider" />
     <div id="tilesContainer"></div>
   </div>
 
@@ -200,21 +193,20 @@
 
     // On "Fetch Analytics"...
     fetchBtn.addEventListener('click', () => {
-      // Gather selected sources (not used in this dummy example)
+      // Gather selected sources
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
       console.log("Selected sources:", selectedSources);
 
-      // Suppose we get some "visualizations" to show
+      // Dummy function returning some 'visualizations'
       const visualizations = getDummyVisualizations();
       if (visualizations.length > 0) {
         analyticsListTitle.style.display = "block"; // show heading
-        vizListContainer.innerHTML = "";
+        vizListContainer.innerHTML = "";            // clear previous
 
         const checkboxGroup = document.createElement('div');
         checkboxGroup.classList.add('checkbox-group');
 
-        // For each "viz", we create a checkbox
         visualizations.forEach(viz => {
           const label = document.createElement('label');
           label.innerHTML = `
@@ -223,10 +215,10 @@
           `;
           checkboxGroup.appendChild(label);
 
-          // We'll handle the initial checked state => load the panel
+          // Initially load the panel
           loadPanel(viz.file);
 
-          // Then, listen for changes
+          // Listen for checkbox changes
           const checkbox = label.querySelector('input[type="checkbox"]');
           checkbox.addEventListener('change', e => {
             if (e.target.checked) {
@@ -247,48 +239,30 @@
     /**
      * Dummy function returning an array of objects describing
      * the analytics panels we want to load.
-     * 'file' is the path to the partial HTML snippet (in /analytics/).
+     * 'file' is the relative path to the HTML snippet (in templates/analytics/).
      */
     function getDummyVisualizations() {
       return [
-        {
-          title: "Docs Timeline",
-          description: "Documents over time",
-          file: "analytics/panel_one.html"
-        },
-        {
-          title: "Tags Pie Chart",
-          description: "Distribution of tags",
-          file: "analytics/panel_two.html"
-        },
-        {
-          title: "Authors Bar",
-          description: "Most active authors",
-          file: "analytics/panel_three.html"
-        },
-        {
-          title: "Misc Chart",
-          description: "Placeholder visualization",
-          file: "analytics/panel_four.html"
-        }
+        { title: "Docs Timeline", description: "Documents over time", file: "analytics/panel_one.html" },
+        { title: "Tags Pie Chart", description: "Distribution of tags", file: "analytics/panel_two.html" },
+        { title: "Authors Bar", description: "Most active authors", file: "analytics/panel_three.html" },
+        { title: "Misc Chart", description: "Placeholder visualization", file: "analytics/panel_four.html" }
       ];
     }
 
     /**
      * Load a panel from the given file path,
-     * create a .tile-panel for it, and insert into #tilesContainer
+     * create a .tile-panel for it, and insert it into #tilesContainer.
      */
     function loadPanel(panelFile) {
-      // If it's already loaded, skip
-      const existing = document.getElementById('tile-' + panelFile);
-      if (existing) return;
+      // If it's already loaded, skip it.
+      if (document.getElementById('tile-' + panelFile)) return;
 
-      // Create a tile
       const tile = document.createElement('div');
       tile.classList.add('tile-panel');
       tile.id = 'tile-' + panelFile;
 
-      // Fetch the partial
+      // Fetch the panel snippet.
       fetch(panelFile)
         .then(resp => resp.text())
         .then(htmlSnippet => {
@@ -298,19 +272,15 @@
           tile.innerHTML = `<div class="panel-content"><strong>Error loading ${panelFile}:</strong> ${err}</div>`;
         });
 
-      // Add the tile to #tilesContainer
       tilesContainer.appendChild(tile);
     }
 
     /**
-     * Remove the tile for the given panelFile
+     * Remove the tile for the given panel file.
      */
     function removePanel(panelFile) {
-      const tileId = 'tile-' + panelFile;
-      const tile = document.getElementById(tileId);
-      if (tile) {
-        tile.remove();
-      }
+      const tile = document.getElementById('tile-' + panelFile);
+      if (tile) tile.remove();
     }
   </script>
 </body>
