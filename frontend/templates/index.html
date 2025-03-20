@@ -2,324 +2,330 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ETH QnA</title>
+  <title>Two-Panel Layout (Analytics with Tiling)</title>
   <style>
+    /* Basic reset + dark mode */
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      font-family: Arial, sans-serif;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      background-color: #333;
-      color: #fff;
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    header .header-left {
-      font-size: 24px;
-      font-weight: bold;
-    }
-    header .header-right {
-      display: flex;
-      align-items: center;
-      font-size: 16px;
-    }
-    header .header-right span {
-      margin-right: 10px;
-    }
-    header .header-right a {
-      color: #fff;
-      text-decoration: none;
-      font-size: 20px;
-    }
-    header .header-right a:hover {
-      text-decoration: underline;
-    }
-    /* Tabs container styling */
-    .tabs {
-      display: flex;
-      background: #eee;
-      padding: 10px;
-      overflow-x: auto;
-    }
-    .tab {
-      padding: 8px 16px;
-      margin-right: 5px;
-      background: #ddd;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .tab.active {
-      background: #bbb;
-    }
-    .container {
-      display: flex;
-      flex: 1;
-      min-height: 0;
-    }
-    .chat-panel {
-      flex: 1;
-      border-right: 1px solid #ccc;
-      display: flex;
-      flex-direction: column;
+      background-color: #1E1E1E;
+      color: #FFF;
+      font-family: sans-serif;
       overflow: hidden;
-      padding: 0;
-      margin: 0;
     }
-    .pdf-panel {
-      flex: 1;
+
+    /* Side panel */
+    .sidebar {
+      position: absolute;
+      top: 0; 
+      left: 0;
+      width: 250px;
+      height: 100%;
+      background-color: #2A2A2A;
+      box-sizing: border-box;
+      transition: width 0.3s ease-in-out;
+      overflow: hidden;
     }
-    .chat-messages {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 10px;
-      background: #f9f9f9;
+    .sidebar.collapsed {
+      width: 60px;
     }
-    .chat-input {
-      padding: 10px;
-      border-top: 1px solid #ccc;
-      background: #eee;
+
+    /* Sidebar header */
+    .sidebar-header {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
+      background-color: #333;
+      padding: 10px;
     }
-    .chat-input input[type="text"] {
-      width: 80%;
-      padding: 8px;
-      font-size: 14px;
+
+    /* Content in the side panel (hidden if collapsed) */
+    .sidebar-content {
+      padding: 10px;
     }
-    .chat-input button {
-      padding: 8px 12px;
-      margin-left: 10px;
-      font-size: 14px;
+    .sidebar.collapsed .sidebar-content {
+      display: none;
+    }
+
+    /* Toggle button in the header */
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: #FFD700;
+      font-size: 1.2rem;
       cursor: pointer;
+      padding: 6px;
     }
-    .chat-message {
-      margin-bottom: 8px;
+    .toggle-btn:focus {
+      outline: 1px solid #999;
     }
-    .user {
+
+    /* Main content */
+    .main-content {
+      position: absolute;
+      top: 0; 
+      left: 0;
+      height: 100%;
+      box-sizing: border-box;
+      transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
+      overflow-y: auto;
+      background-color: #1E1E1E;
+      padding: 20px;
+    }
+    .main-content.with-sidebar {
+      left: 250px;
+      width: calc(100% - 250px);
+    }
+    .sidebar.collapsed ~ .main-content.with-sidebar {
+      left: 60px;
+      width: calc(100% - 60px);
+    }
+
+    /* Title styling in the main panel */
+    h1.main-title {
+      margin: 0;
+      padding: 20px 0 10px 20px;
+      font-size: 1.5rem;
+      font-weight: normal;
+      color: #FFD700;
+      text-align: left;
+    }
+
+    /* Divider for main panel */
+    .divider {
+      border: 0;
+      border-top: 1px solid #444;
+      margin: 0 20px 20px 20px;
+    }
+
+    /* Container for the tiled panels using a 2-col grid */
+    #tilesContainer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 1rem;
+      padding: 0 20px 20px 20px;
+      box-sizing: border-box;
+    }
+
+    /* Each tile is a simple panel */
+    .tile-panel {
+      background-color: #2A2A2A;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 10px;
+      aspect-ratio: 1 / 0.5;
+    }
+    .tile-panel .panel-content {
+      padding: 4px;
+    }
+
+    /* Titles for the checkbox lists in the side panel */
+    .list-title {
+      color: #FFD700;
+      margin-bottom: 6px;
       font-weight: bold;
     }
-    .bot {
-      font-style: italic;
-      color: #555;
+
+    /* Basic styling for checkboxes and button */
+    .checkbox-group label {
+      display: block;
+      margin-bottom: 5px;
     }
-    .spinner {
-      display: none;
-      width: 30px;
-      height: 30px;
-      border: 4px solid #ccc;
-      border-top-color: #333;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-left: 10px;
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 6px;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    footer {
-      background: #333;
-      color: #fff;
-      text-align: center;
-      font-size: 14px;
-      height: 20px;
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 10px;
+      padding: 8px;
+      border: 1px solid #555;
+      background-color: #333;
+      color: #FFF;
+      cursor: pointer;
     }
   </style>
-  <!-- Include Marked library for Markdown rendering -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-  <header>
-    <div class="header-left">ETH QnA</div>
-    <div class="header-right">
-      <span>{{ user.name or user.email }}</span>
-      <a href="{{ url_for('logout') }}"> ⏏ </a>
-      <span>&nbsp; | </span>
-      <a href="{{ url_for('ethqna') }}"> 🐰 </a>
+  <!-- Side Panel -->
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <button id="toggleSidebarBtn" class="toggle-btn">&#9776;</button>
     </div>
-  </header>
-  
-  <!-- Tabs for PDF documents -->
-  <div class="tabs" id="pdf-tabs">
-    <!-- Tabs will be populated here from /documents -->
-  </div>
-  
-  <div class="container">
-    <!-- Chat Panel -->
-    <div class="chat-panel">
-      <div class="chat-messages" id="chat-messages">
-        <!-- The greeting message will be inserted here on page load -->
-      </div>
-      <div class="chat-input">
-        <input type="text" id="message-input" placeholder="Type your message..." />
-        <button onclick="sendMessage()">Send</button>
-        <div class="spinner" id="spinner"></div>
-      </div>
-    </div>
+    <div class="sidebar-content">
+      <!-- The sources list will be populated on page load -->
+      <div class="list-title" id="sourcesListTitle" style="display: none;">Select Source(s):</div>
+      <div class="checkbox-group" id="sourcesList"></div>
 
-    <!-- PDF Panel -->
-    <div class="pdf-panel">
-      <iframe id="pdf-viewer" src="" width="100%" height="100%"></iframe>
+      <button id="fetchBtn">Fetch Analytics</button>
+
+      <hr class="divider" />
+
+      <div class="list-title" id="analyticsListTitle" style="display: none;">Available Analytics:</div>
+      <div id="vizListContainer"></div>
     </div>
   </div>
 
-  <footer style="text-align: center; padding: 10px 20px; background: #333; color: #fff; font-size: 14px;">
-      MIT Licensed &nbsp;|&nbsp;
-      <a href="https://github.com/Ramshreyas/ethqna" target="_blank" style="color: #fff; text-decoration: none; vertical-align: middle;">
-        <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" style="vertical-align: middle; margin-right: 5px;" data-view-component="true">
-          <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82A7.6 7.6 0 018 4.81c.68.003 1.36.092 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-        </svg>
-        GitHub
-      </a>
-  </footer>
-  
+  <!-- Main Content -->
+  <div id="mainContent" class="main-content with-sidebar">
+    <h1 class="main-title">Ecosystem Analytics</h1>
+    <hr class="divider" />
+    <div id="tilesContainer"></div>
+  </div>
+
   <script>
-    // Global variable to track the currently selected PDF file.
-    var selectedPdfFile = "";
-
-    // Function to update the PDF viewer and active tab.
-    function updatePdfViewer(pdfFile, page) {
-      var pdfViewer = document.getElementById("pdf-viewer");
-      pdfViewer.src = "/pdf?doc=" + pdfFile + "#page=" + page;
-      selectedPdfFile = pdfFile;
-      var tabs = document.querySelectorAll(".tab");
-      tabs.forEach(function(tab) {
-        if (tab.getAttribute("data-pdf-file") === pdfFile) {
-          tab.classList.add("active");
-        } else {
-          tab.classList.remove("active");
-        }
-      });
+    // Debug helper: log messages with a prefix.
+    function debug(msg) {
+      console.log("[DEBUG]", msg);
     }
 
-    // Fetch documents and populate the tabs.
-    fetch("/documents")
-      .then(response => response.json())
-      .then(data => {
-        if (data.documents && data.documents.length > 0) {
-          populateTabs(data.documents);
-          // Preselect the first document and update the PDF viewer.
-          selectedPdfFile = data.documents[0].pdf_file;
-          document.getElementById("pdf-viewer").src = "/pdf?doc=" + selectedPdfFile;
-        } else {
-          document.getElementById("pdf-tabs").innerHTML = "<p>No documents available.</p>";
-        }
-      })
-      .catch(error => {
-        console.error("Error fetching documents:", error);
-      });
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const toggleBtn = document.getElementById('toggleSidebarBtn');
 
-    function populateTabs(documents) {
-      var tabsContainer = document.getElementById("pdf-tabs");
-      tabsContainer.innerHTML = "";  // Clear any existing tabs.
-      documents.forEach(function(doc, index) {
-        var tab = document.createElement("div");
-        tab.className = "tab" + (index === 0 ? " active" : "");
-        // Use the title if available; otherwise, use a snippet of the description.
-        tab.textContent = doc.title ? doc.title : (doc.description.split(".")[0] || "Document " + (index + 1));
-        tab.setAttribute("data-pdf-file", doc.pdf_file);
-        tab.onclick = function() {
-          var tabs = document.getElementsByClassName("tab");
-          for (var i = 0; i < tabs.length; i++) {
-            tabs[i].classList.remove("active");
-          }
-          this.classList.add("active");
-          selectedPdfFile = this.getAttribute("data-pdf-file");
-          var pdfViewer = document.getElementById("pdf-viewer");
-          pdfViewer.src = "/pdf?doc=" + selectedPdfFile;
-        };
-        tabsContainer.appendChild(tab);
-      });
-    }
-
-    // Prepopulate chat with a greeting message when the page loads.
-    window.onload = function() {
-      var greeting = 
-        "Hello! I'm your friendly research assistant.\n" +
-        "Feel free to ask me anything about these documents and I'll do my best to help.\n" +
-        "Keep in mind that I'm a simple bot, so I may occasionally make mistakes.\n" +
-        "You can use me to extract information, compare data, or summarize content.\n" +
-        "The document on the right will try to update to the most relevant page based on your query.\n" +
-        "I might not know external facts, so please be aware of that!";
-      
-      var chatMessages = document.getElementById("chat-messages");
-      var botMessageDiv = document.createElement('div');
-      botMessageDiv.classList.add('chat-message', 'bot');
-      botMessageDiv.innerHTML = marked.parse(greeting);
-      chatMessages.appendChild(botMessageDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    };
-
-    document.getElementById('message-input').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        sendMessage();
-      }
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      debug("Toggled sidebar collapsed state");
     });
 
-    function sendMessage() {
-      const input = document.getElementById('message-input');
-      const message = input.value.trim();
-      if (message === '') return;
+    const fetchBtn = document.getElementById('fetchBtn');
+    const sourcesList = document.getElementById('sourcesList');
+    const sourcesListTitle = document.getElementById('sourcesListTitle');
+    const vizListContainer = document.getElementById('vizListContainer');
+    const analyticsListTitle = document.getElementById('analyticsListTitle');
+    const tilesContainer = document.getElementById('tilesContainer');
 
-      const chatMessages = document.getElementById('chat-messages');
-      const userMessageDiv = document.createElement('div');
-      userMessageDiv.classList.add('chat-message', 'user');
-      userMessageDiv.textContent = message;
-      chatMessages.appendChild(userMessageDiv);
-      input.value = '';
-      
-      const spinner = document.getElementById('spinner');
-      spinner.style.display = 'block';
-      
-      // Send the user query along with the currently selected document.
-      fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message, doc: selectedPdfFile })
+    // Load available sources on page load.
+    function loadSources() {
+      fetch("/fetch_analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}) // No sources specified; expecting only available_sources.
       })
-      .then(response => response.json())
+      .then(resp => resp.json())
       .then(data => {
-        spinner.style.display = 'none';
-        const botMessageDiv = document.createElement('div');
-        botMessageDiv.classList.add('chat-message', 'bot');
-        let docInfoLine = "";
-        if (data.page) {
-          const activeTab = document.querySelector('.tab.active');
-          if (activeTab) {
-            const pdfFile = activeTab.getAttribute("data-pdf-file");
-            docInfoLine = `<a href="#" onclick="updatePdfViewer('${pdfFile}', ${data.page}); return false;">${activeTab.textContent} (Page ${data.page})</a><br>`;
-          }
-          var pdfViewer = document.getElementById("pdf-viewer");
-          var currentUrl = pdfViewer.src.split("#")[0];
-          pdfViewer.src = currentUrl + "#page=" + data.page;
+        const availableSources = data.available_sources || [];
+        if (availableSources.length > 0) {
+          sourcesListTitle.style.display = "block";
+          sourcesList.innerHTML = "";
+          const checkboxGroup = document.createElement('div');
+          checkboxGroup.classList.add('checkbox-group');
+          availableSources.forEach(src => {
+            const label = document.createElement('label');
+            label.innerHTML = `<input type="checkbox" name="sources" value="${src}"> ${src}`;
+            checkboxGroup.appendChild(label);
+          });
+          sourcesList.appendChild(checkboxGroup);
+          debug("Loaded sources: " + JSON.stringify(availableSources));
         }
-        // Remove any preexisting "From:" line from the server response if present.
-        let responseContent = data.response;
-        responseContent = responseContent.replace(/^Answer:\s*/, "");
-        if (responseContent.indexOf("<strong>From:</strong>") === 0) {
-          const brIndex = responseContent.indexOf("<br>");
-          if (brIndex !== -1) {
-            responseContent = responseContent.substring(brIndex + 4);
-          }
-        }
-        botMessageDiv.innerHTML = docInfoLine + marked.parse(responseContent);
-        chatMessages.appendChild(botMessageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
       })
       .catch(error => {
-        console.error("Error:", error);
-        spinner.style.display = 'none';
+        console.error("Error loading sources: ", error);
       });
     }
+
+    // Fetch analytics based on selected sources.
+    function fetchAnalytics() {
+      const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
+      const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
+      debug("Fetching analytics with selected sources: " + JSON.stringify(selectedSources));
+
+      // Clear previously loaded panels.
+      tilesContainer.innerHTML = "";
+
+      // If no sources are selected, display a message and do not proceed.
+      if (selectedSources.length === 0) {
+        analyticsListTitle.style.display = "block";
+        vizListContainer.innerHTML = "<p style='color: #CCC;'>No sources selected.</p>";
+        return;
+      }
+
+      // Otherwise, fetch analytics from the backend.
+      fetch("/fetch_analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources: selectedSources })
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        const visualizations = data.visualizations || [];
+        if (visualizations.length > 0) {
+          analyticsListTitle.style.display = "block";
+          vizListContainer.innerHTML = "";
+          const vizCheckboxGroup = document.createElement('div');
+          vizCheckboxGroup.classList.add('checkbox-group');
+          visualizations.forEach(viz => {
+            const panelPath = viz.path;
+            const title = viz.title;
+            const label = document.createElement('label');
+            label.innerHTML = `<input type="checkbox" name="vizCheckbox" value="${panelPath}" checked> ${title}`;
+            vizCheckboxGroup.appendChild(label);
+
+            // Load the panel initially.
+            loadPanel(panelPath);
+
+            // Listen for checkbox changes.
+            const checkbox = label.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', e => {
+              if (e.target.checked) {
+                debug("Loading panel: " + panelPath);
+                loadPanel(panelPath);
+              } else {
+                debug("Removing panel: " + panelPath);
+                removePanel(panelPath);
+              }
+            });
+          });
+          vizListContainer.appendChild(vizCheckboxGroup);
+        } else {
+          analyticsListTitle.style.display = "none";
+          vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
+        }
+      })
+      .catch(error => {
+        analyticsListTitle.style.display = "none";
+        vizListContainer.innerHTML = `<p style='color: #CCC;'>Error: ${error}</p>`;
+        debug("Error fetching analytics: " + error);
+        console.error("Error fetching analytics:", error);
+      });
+    }
+
+    // Helper functions to load and remove panels.
+    function loadPanel(panelPath) {
+      // Get selected sources from the checkboxes.
+      const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
+      const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
+      const query = selectedSources.length ? '?' + selectedSources.map(s => 'sources=' + s).join('&') : '';
+      const fullPath = panelPath + query;
+      
+      if (document.getElementById('tile-' + panelPath)) return;
+      debug("Fetching panel from: " + fullPath);
+      const tile = document.createElement('div');
+      tile.classList.add('tile-panel');
+      tile.id = 'tile-' + panelPath;
+      fetch(fullPath)
+        .then(resp => resp.text())
+        .then(htmlSnippet => {
+          tile.innerHTML = htmlSnippet;
+        })
+        .catch(err => {
+          tile.innerHTML = `<div class="panel-content"><strong>Error loading ${panelPath}:</strong> ${err}</div>`;
+        });
+      tilesContainer.appendChild(tile);
+    }
+
+    function removePanel(panelPath) {
+      const tile = document.getElementById('tile-' + panelPath);
+      if (tile) {
+        tile.remove();
+        debug("Removed panel: " + panelPath);
+      }
+    }
+
+    // Set up event listeners.
+    fetchBtn.addEventListener('click', fetchAnalytics);
+    document.addEventListener('DOMContentLoaded', loadSources);
   </script>
 </body>
 </html>
