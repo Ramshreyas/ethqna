@@ -12,7 +12,7 @@
       background-color: #1E1E1E;
       color: #FFF;
       font-family: sans-serif;
-      overflow: hidden; /* We'll manage scrolling in main content if needed */
+      overflow: hidden;
     }
 
     /* Side panel */
@@ -20,12 +20,12 @@
       position: absolute;
       top: 0; 
       left: 0;
-      width: 250px;       /* expanded width */
+      width: 250px;
       height: 100%;
       background-color: #2A2A2A;
       box-sizing: border-box;
       transition: width 0.3s ease-in-out;
-      overflow: hidden;   /* hide overflow when collapsed */
+      overflow: hidden;
     }
     .sidebar.collapsed {
       width: 60px;
@@ -35,7 +35,7 @@
     .sidebar-header {
       display: flex;
       align-items: center;
-      justify-content: flex-end; /* push toggle button to the right */
+      justify-content: flex-end;
       background-color: #333;
       padding: 10px;
     }
@@ -154,13 +154,9 @@
       <button id="toggleSidebarBtn" class="toggle-btn">&#9776;</button>
     </div>
     <div class="sidebar-content">
-      <div class="list-title">Select Source(s):</div>
-      <div class="checkbox-group" id="sourcesList">
-        <label><input type="checkbox" name="sources" value="vitalik.eth.limo"> vitalik.eth.limo</label>
-        <label><input type="checkbox" name="sources" value="Reddit AMA"> Reddit AMA</label>
-        <label><input type="checkbox" name="sources" value="Conversations"> Conversations</label>
-        <label><input type="checkbox" name="sources" value="local://"> local:// (All local sources)</label>
-      </div>
+      <!-- The sources list will be populated on page load -->
+      <div class="list-title" id="sourcesListTitle" style="display: none;">Select Source(s):</div>
+      <div class="checkbox-group" id="sourcesList"></div>
 
       <button id="fetchBtn">Fetch Analytics</button>
 
@@ -179,93 +175,118 @@
   </div>
 
   <script>
+    // Debug helper: log messages with a prefix.
+    function debug(msg) {
+      console.log("[DEBUG]", msg);
+    }
+
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('mainContent');
     const toggleBtn = document.getElementById('toggleSidebarBtn');
 
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('collapsed');
+      debug("Toggled sidebar collapsed state");
     });
 
     const fetchBtn = document.getElementById('fetchBtn');
+    const sourcesList = document.getElementById('sourcesList');
+    const sourcesListTitle = document.getElementById('sourcesListTitle');
     const vizListContainer = document.getElementById('vizListContainer');
     const analyticsListTitle = document.getElementById('analyticsListTitle');
     const tilesContainer = document.getElementById('tilesContainer');
 
-    // On "Fetch Analytics"...
-    fetchBtn.addEventListener('click', () => {
-      // Clear previously loaded panels
-      tilesContainer.innerHTML = "";
-      
-      // Gather selected sources
+    // Load available sources on page load.
+    function loadSources() {
+      fetch("/fetch_analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}) // No sources specified; expecting only available_sources.
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        const availableSources = data.available_sources || [];
+        if (availableSources.length > 0) {
+          sourcesListTitle.style.display = "block";
+          sourcesList.innerHTML = "";
+          const checkboxGroup = document.createElement('div');
+          checkboxGroup.classList.add('checkbox-group');
+          availableSources.forEach(src => {
+            const label = document.createElement('label');
+            label.innerHTML = `<input type="checkbox" name="sources" value="${src}"> ${src}`;
+            checkboxGroup.appendChild(label);
+          });
+          sourcesList.appendChild(checkboxGroup);
+          debug("Loaded sources: " + JSON.stringify(availableSources));
+        }
+      })
+      .catch(error => {
+        console.error("Error loading sources: ", error);
+      });
+    }
+
+    // Fetch analytics based on selected sources.
+    function fetchAnalytics() {
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
-      console.log("Selected sources:", selectedSources);
+      debug("Fetching analytics with selected sources: " + JSON.stringify(selectedSources));
 
-      // Call our API endpoint (using /fetch_analytics)
+      // Clear previously loaded panels.
+      tilesContainer.innerHTML = "";
+
       fetch("/fetch_analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sources: selectedSources })
       })
-        .then(resp => resp.json())
-        .then(data => {
-          if (data.error) {
-            analyticsListTitle.style.display = "none";
-            vizListContainer.innerHTML = `<p style="color: #CCC;">${data.error}</p>`;
-            return;
-          }
-          
-          const visualizations = data.visualizations || [];
-          if (visualizations.length > 0) {
-            analyticsListTitle.style.display = "block";
-            vizListContainer.innerHTML = "";
-            const checkboxGroup = document.createElement('div');
-            checkboxGroup.classList.add('checkbox-group');
+      .then(resp => resp.json())
+      .then(data => {
+        const visualizations = data.visualizations || [];
+        if (visualizations.length > 0) {
+          analyticsListTitle.style.display = "block";
+          vizListContainer.innerHTML = "";
+          const vizCheckboxGroup = document.createElement('div');
+          vizCheckboxGroup.classList.add('checkbox-group');
+          visualizations.forEach(viz => {
+            const panelPath = viz.path;
+            const title = viz.title;
+            const label = document.createElement('label');
+            label.innerHTML = `<input type="checkbox" name="vizCheckbox" value="${panelPath}" checked> ${title}`;
+            vizCheckboxGroup.appendChild(label);
 
-            visualizations.forEach(viz => {
-              // Determine panel path: if viz.path is not a string, assume it's an object with a 'path' key.
-              const panelPath = typeof viz.path === "string" ? viz.path : viz.path.path;
-              const label = document.createElement('label');
-              label.innerHTML = `
-                <input type="checkbox" name="vizCheckbox" value="${panelPath}" checked>
-                ${viz.title}
-              `;
-              checkboxGroup.appendChild(label);
+            // Load the panel initially.
+            loadPanel(panelPath);
 
-              // Initially load the panel
-              loadPanel(panelPath);
-
-              // Listen for checkbox changes
-              const checkbox = label.querySelector('input[type="checkbox"]');
-              checkbox.addEventListener('change', e => {
-                if (e.target.checked) {
-                  loadPanel(panelPath);
-                } else {
-                  removePanel(panelPath);
-                }
-              });
+            // Listen for checkbox changes.
+            const checkbox = label.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', e => {
+              if (e.target.checked) {
+                debug("Loading panel: " + panelPath);
+                loadPanel(panelPath);
+              } else {
+                debug("Removing panel: " + panelPath);
+                removePanel(panelPath);
+              }
             });
-
-            vizListContainer.appendChild(checkboxGroup);
-          } else {
-            analyticsListTitle.style.display = "none";
-            vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
-          }
-        })
-        .catch(error => {
+          });
+          vizListContainer.appendChild(vizCheckboxGroup);
+        } else {
           analyticsListTitle.style.display = "none";
-          vizListContainer.innerHTML = `<p style='color: #CCC;'>Error: ${error}</p>`;
-          console.error("Error fetching analytics:", error);
-        });
-    });
+          vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
+        }
+      })
+      .catch(error => {
+        analyticsListTitle.style.display = "none";
+        vizListContainer.innerHTML = `<p style='color: #CCC;'>Error: ${error}</p>`;
+        debug("Error fetching analytics: " + error);
+        console.error("Error fetching analytics:", error);
+      });
+    }
 
-    /**
-     * Load a panel from the given file path,
-     * create a .tile-panel for it, and insert it into #tilesContainer.
-     */
+    // Helper functions to load and remove panels.
     function loadPanel(panelPath) {
       if (document.getElementById('tile-' + panelPath)) return;
+      debug("Fetching panel from: " + panelPath);
       const tile = document.createElement('div');
       tile.classList.add('tile-panel');
       tile.id = 'tile-' + panelPath;
@@ -280,13 +301,17 @@
       tilesContainer.appendChild(tile);
     }
 
-    /**
-     * Remove the tile for the given panel path.
-     */
     function removePanel(panelPath) {
       const tile = document.getElementById('tile-' + panelPath);
-      if (tile) tile.remove();
+      if (tile) {
+        tile.remove();
+        debug("Removed panel: " + panelPath);
+      }
     }
+
+    // Set up event listeners.
+    fetchBtn.addEventListener('click', fetchAnalytics);
+    document.addEventListener('DOMContentLoaded', loadSources);
   </script>
 </body>
 </html>

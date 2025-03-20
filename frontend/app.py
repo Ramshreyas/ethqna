@@ -370,13 +370,18 @@ def analytics_static(filename):
 def api_analytics():
     """
     Expects a JSON payload like: { "sources": ["vitalik.eth.limo", "Reddit AMA"] }
-    Reads analytics.json from /data/pdf_sources and returns the list of visualization objects
-    for the selected sources.
+    Reads analytics.json from /data/pdf_sources and returns:
+      - available_sources: a list of sources that have analytics panels.
+      - visualizations: a de-duplicated list of panel file paths for the selected sources.
+    If no sources are provided, returns panels for all available sources.
     """
     data = request.get_json() or {}
     selected_sources = data.get("sources", [])
     
-    analytics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "pdf_sources", "analytics.json")
+    analytics_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 
+        "..", "data", "pdf_sources", "analytics.json"
+    )
     if not os.path.exists(analytics_path):
         return jsonify({"error": "analytics.json not found"}), 404
     
@@ -386,21 +391,35 @@ def api_analytics():
     except Exception as e:
         return jsonify({"error": f"Error reading analytics.json: {e}"}), 500
     
+    # Build available_sources: keys with non-empty lists.
+    available_sources = [ key for key, value in analytics_data.items() if value ]
+    
+    # If no sources selected, default to all available.
+    if not selected_sources:
+        selected_sources = available_sources
+
+    # Collect panel file paths for the selected sources.
     result = []
     for source in selected_sources:
         result.extend(analytics_data.get(source, []))
     
-    # Remove duplicates from result (each item is a dict with 'title' and 'path')
+    # Remove duplicates. If the items are dicts or strings, handle appropriately.
     seen = set()
     unique = []
     for item in result:
-        key = (item.get("title"), item.get("path"))
+        if isinstance(item, dict):
+            key = (item.get("title"), item.get("path"))
+        else:
+            key = item
         if key not in seen:
             seen.add(key)
             unique.append(item)
     result = unique
 
-    return jsonify({"visualizations": result})
+    return jsonify({
+        "available_sources": available_sources,
+        "visualizations": result
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
