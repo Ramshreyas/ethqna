@@ -60,6 +60,7 @@ DEV_MODE = os.environ.get('DEV_MODE', '0') == '1'
 
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
+app.logger.setLevel(logging.DEBUG)
 
 # Force Flask to generate HTTPS URLs and trust reverse-proxy headers.
 app.config['PREFERRED_URL_SCHEME'] = 'https'
@@ -360,6 +361,27 @@ def analytics_data():
         },
         "documents": documents
     })
+
+@app.route("/analytics/todo")
+def analytics_todo():
+    """
+    Dynamic analytics panel endpoint for the 'TODO' analysis.
+    Accepts selected sources via query parameters (e.g. ?sources=A&sources=B),
+    calls analytics.py to get a summary, and renders the todo.html template.
+    """
+    selected_sources = request.args.getlist("sources")
+    app.logger.debug("analytics_todo: selected_sources: %s", selected_sources)
+    print("DEBUG: analytics_todo selected_sources:", selected_sources)  # Temporary debug print
+    
+    from .analytics import get_analytics_summary  # Adjust import if necessary.
+    summary = get_analytics_summary(selected_sources)
+    app.logger.debug("analytics_todo: summary: %s", summary)
+    print("DEBUG: analytics_todo summary:", summary)  # Temporary debug print
+
+    return render_template("analytics/todo.html",
+                           title="TODO",
+                           selected_sources=selected_sources,
+                           summary=summary)
 
 @app.route('/analytics/<path:filename>')
 def analytics_static(filename):

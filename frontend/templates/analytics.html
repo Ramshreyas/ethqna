@@ -285,12 +285,18 @@
 
     // Helper functions to load and remove panels.
     function loadPanel(panelPath) {
+      // Get selected sources from the checkboxes.
+      const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
+      const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
+      const query = selectedSources.length ? '?' + selectedSources.map(s => 'sources=' + s).join('&') : '';
+      const fullPath = panelPath + query;
+      
       if (document.getElementById('tile-' + panelPath)) return;
-      debug("Fetching panel from: " + panelPath);
+      debug("Fetching panel from: " + fullPath);
       const tile = document.createElement('div');
       tile.classList.add('tile-panel');
       tile.id = 'tile-' + panelPath;
-      fetch(panelPath)
+      fetch(fullPath)
         .then(resp => resp.text())
         .then(htmlSnippet => {
           tile.innerHTML = htmlSnippet;

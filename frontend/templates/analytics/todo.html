@@ -1,5 +1,54 @@
-<div class="panel-content">
-    <h3>TODO</h3>
-    <p>These analytics are custom made for each source, or set of sources. As long as the data source is available an analysis can be made.</p>
-  </div>
-  
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+      /* Basic styling for the analytics panel in dark mode */
+      body {
+          font-family: sans-serif;
+          background-color: #1E1E1E;
+          margin: 0;
+          padding: 20px;
+          color: #FFF;
+      }
+      .panel {
+          background: #2A2A2A;
+          border: 1px solid #444;
+          padding: 20px;
+          border-radius: 4px;
+          color: #FFF;
+      }
+      .panel h2 {
+          margin-top: 0;
+      }
+      .metadata {
+          margin-top: 10px;
+      }
+      .metadata p {
+          margin: 5px 0;
+      }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>{{ title }}</h2>
+        <div class="metadata">
+            <p><strong>Selected Sources:</strong> 
+              {% if selected_sources %}
+                {{ selected_sources | join(', ') }}
+              {% else %}
+                All
+              {% endif %}
+            </p>
+            <p><strong>Total Documents:</strong> {{ summary.total_docs }}</p>
+            <p><strong>Unique Authors:</strong> {{ summary.unique_authors_count }}</p>
+            <p><strong>Date Range:</strong> {{ summary.earliest_date }} to {{ summary.latest_date }}</p>
+        </div>
+        <div class="content">
+            <!-- Placeholder for advanced analytics visualizations -->
+            <p>This panel will display advanced analytics visualizations based on the selected sources.</p>
+        </div>
+    </div>
+</body>
+</html>
