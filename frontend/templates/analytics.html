@@ -234,6 +234,14 @@
       // Clear previously loaded panels.
       tilesContainer.innerHTML = "";
 
+      // If no sources are selected, display a message and do not proceed.
+      if (selectedSources.length === 0) {
+        analyticsListTitle.style.display = "block";
+        vizListContainer.innerHTML = "<p style='color: #CCC;'>No sources selected.</p>";
+        return;
+      }
+
+      // Otherwise, fetch analytics from the backend.
       fetch("/fetch_analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
