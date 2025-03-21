@@ -48,30 +48,8 @@
 <body>
   <div class="panel">
     <h1>{{ title }}</h1>
-    {% if selected_sources %}
-      <p><strong>Selected Sources:</strong> {{ selected_sources | join(', ') }}</p>
-    {% else %}
-      <p><strong>Selected Sources:</strong> All</p>
-    {% endif %}
-    
-    <!-- Summary Table -->
-    <table>
-      <tr>
-        <th>Total Documents</th>
-        <td>{{ data.summary.total_docs }}</td>
-      </tr>
-      <tr>
-        <th>Unique Authors</th>
-        <td>{{ data.summary.unique_authors_count }}</td>
-      </tr>
-      <tr>
-        <th>Date Range</th>
-        <td>{{ data.summary.earliest_date }} to {{ data.summary.latest_date }}</td>
-      </tr>
-    </table>
     
     <!-- Time Series Chart -->
-    <h2>Documents Over Time</h2>
     <canvas id="timeSeriesChart" width="400" height="200"></canvas>
     <script>
       const timeSeriesData = {{ data.time_series | tojson }};
@@ -112,6 +90,28 @@
           }
       });
     </script>
+    
+    {% if selected_sources %}
+      <p><strong>Selected Sources:</strong> {{ selected_sources | join(', ') }}</p>
+    {% else %}
+      <p><strong>Selected Sources:</strong> All</p>
+    {% endif %}
+
+    <!-- Summary Table -->
+    <table>
+      <tr>
+        <th>Total Documents</th>
+        <td>{{ data.summary.total_docs }}</td>
+      </tr>
+      <tr>
+        <th>Unique Authors</th>
+        <td>{{ data.summary.unique_authors_count }}</td>
+      </tr>
+      <tr>
+        <th>Date Range</th>
+        <td>{{ data.summary.earliest_date }} to {{ data.summary.latest_date }}</td>
+      </tr>
+    </table>
     
     <!-- Word Cloud -->
     <h2>Tag Cloud</h2>
