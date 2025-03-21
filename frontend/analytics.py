@@ -5,7 +5,7 @@ import logging
 from collections import defaultdict, Counter
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  
+logger.setLevel(logging.DEBUG)
 
 def get_summary_data(selected_sources):
     """
@@ -33,9 +33,10 @@ def get_summary_data(selected_sources):
     # Filter documents by selected_sources if provided.
     filtered_docs = []
     for doc in docs.values():
+        # Use case-insensitive comparison; if the "source" field is None, treat it as empty string.
+        source = doc.get("source") or ""
         if selected_sources:
-            # Compare case-insensitively.
-            if doc.get("source", "").lower() in [s.lower() for s in selected_sources]:
+            if source.lower() in [s.lower() for s in selected_sources]:
                 filtered_docs.append(doc)
         else:
             filtered_docs.append(doc)
@@ -46,19 +47,23 @@ def get_summary_data(selected_sources):
     authors = set()
     dates = []
     for doc in filtered_docs:
-        for author in doc.get("authors", []):
+        # If "authors" is None, default to empty list.
+        for author in doc.get("authors") or []:
             authors.add(author)
-        date_str = doc.get("date", "")
+        # If "date" is None, default to empty string.
+        date_str = doc.get("date") or ""
         try:
             dt = datetime.strptime(date_str, "%Y-%m-%d")
             dates.append(dt)
         except Exception as e:
-            logger.debug("Error parsing date %s: %s", date_str, e)
-    unique_authors_count = len(authors)
-    earliest_date = min(dates).strftime("%Y-%m-%d") if dates else "N/A"
-    latest_date = max(dates).strftime("%Y-%m-%d") if dates else "N/A"
+            logger.debug("Error parsing date '%s': %s", date_str, e)
+    
+    # If there are no authors, show '-' instead of 0.
+    unique_authors_count = len(authors) if authors else "-"
+    earliest_date = min(dates).strftime("%Y-%m-%d") if dates else "-"
+    latest_date = max(dates).strftime("%Y-%m-%d") if dates else "-"
     summary = {
-        "total_docs": total_docs,
+        "total_docs": total_docs if total_docs > 0 else "-",
         "unique_authors_count": unique_authors_count,
         "earliest_date": earliest_date,
         "latest_date": latest_date
@@ -74,7 +79,8 @@ def get_summary_data(selected_sources):
     # Build word cloud: count frequency of tags.
     tag_counter = Counter()
     for doc in filtered_docs:
-        tags = doc.get("tags", [])
+        # If "tags" is None, default to an empty list.
+        tags = doc.get("tags") or []
         tag_counter.update(tags)
     word_cloud = [{"tag": tag, "count": count} for tag, count in tag_counter.items()]
     
@@ -99,10 +105,10 @@ def get_analytics_summary(selected_sources):
     logger.debug("Loading documents from: %s", documents_path)
     
     summary = {
-        "total_docs": 0,
-        "unique_authors_count": 0,
-        "earliest_date": "N/A",
-        "latest_date": "N/A"
+        "total_docs": "-",
+        "unique_authors_count": "-",
+        "earliest_date": "-",
+        "latest_date": "-"
     }
     
     if not os.path.exists(documents_path):
@@ -120,29 +126,29 @@ def get_analytics_summary(selected_sources):
     # Filter documents based on selected_sources (if provided)
     filtered_docs = []
     for doc in docs.values():
+        source = doc.get("source") or ""
         if selected_sources:
-            if doc.get("source", "") in selected_sources:
+            if source.lower() in [s.lower() for s in selected_sources]:
                 filtered_docs.append(doc)
         else:
             filtered_docs.append(doc)
     logger.debug("Filtered documents count: %d", len(filtered_docs))
 
-    summary["total_docs"] = len(filtered_docs)
-    
-    # Compute unique authors and collect dates
+    total_docs = len(filtered_docs)
     authors = set()
     dates = []
     for doc in filtered_docs:
-        for author in doc.get("authors", []):
+        for author in doc.get("authors") or []:
             authors.add(author)
-        date_str = doc.get("date", "")
+        date_str = doc.get("date") or ""
         try:
             dt = datetime.strptime(date_str, "%Y-%m-%d")
             dates.append(dt)
         except Exception as e:
             logger.debug("Error parsing date '%s': %s", date_str, e)
             continue
-    summary["unique_authors_count"] = len(authors)
+    summary["total_docs"] = total_docs if total_docs > 0 else "-"
+    summary["unique_authors_count"] = len(authors) if authors else "-"
     if dates:
         summary["earliest_date"] = min(dates).strftime("%Y-%m-%d")
         summary["latest_date"] = max(dates).strftime("%Y-%m-%d")
