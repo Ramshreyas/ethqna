@@ -50,7 +50,7 @@
     <h1>{{ title }}</h1>
     
     <!-- Time Series Chart -->
-    <canvas id="timeSeriesChart" width="400" height="200"></canvas>
+    <canvas id="timeSeriesChart" width="400" height="100"></canvas>
     <script>
       const timeSeriesData = {{ data.time_series | tojson }};
       const labels = timeSeriesData.map(item => item.date);
