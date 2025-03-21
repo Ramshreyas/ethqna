@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #1E1E1E;
+      color: #FFF;
+      /* padding: 20px; */
+    }
+    .panel {
+      background-color: #2A2A2A;
+      border: 1px solid #444;
+      padding: 20px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    h1, h2 {
+      color: #FFD700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    table, th, td {
+      border: 1px solid #555;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    /* Word cloud styles */
+    .word-cloud {
+      padding: 10px;
+    }
+    .word-cloud span {
+      display: inline-block;
+      margin: 5px;
+      color: #FFD700;
+    }
+  </style>
+  <!-- Include Chart.js from CDN for the time series chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="panel">
+    <h1>{{ title }}</h1>
+    {% if selected_sources %}
+      <p><strong>Selected Sources:</strong> {{ selected_sources | join(', ') }}</p>
+    {% else %}
+      <p><strong>Selected Sources:</strong> All</p>
+    {% endif %}
+    
+    <!-- Summary Table -->
+    <table>
+      <tr>
+        <th>Total Documents</th>
+        <td>{{ data.summary.total_docs }}</td>
+      </tr>
+      <tr>
+        <th>Unique Authors</th>
+        <td>{{ data.summary.unique_authors_count }}</td>
+      </tr>
+      <tr>
+        <th>Date Range</th>
+        <td>{{ data.summary.earliest_date }} to {{ data.summary.latest_date }}</td>
+      </tr>
+    </table>
+    
+    <!-- Time Series Chart -->
+    <h2>Documents Over Time</h2>
+    <canvas id="timeSeriesChart" width="400" height="200"></canvas>
+    <script>
+      const timeSeriesData = {{ data.time_series | tojson }};
+      const labels = timeSeriesData.map(item => item.date);
+      const counts = timeSeriesData.map(item => item.count);
+      
+      const ctx = document.getElementById('timeSeriesChart').getContext('2d');
+      const timeSeriesChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: 'Number of Documents',
+                  data: counts,
+                  borderColor: 'rgba(255, 215, 0, 1)',  // gold
+                  backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                  fill: true,
+              }]
+          },
+          options: {
+              scales: {
+                  x: {
+                      ticks: { color: '#FFF' },
+                      grid: { color: '#555' }
+                  },
+                  y: {
+                      ticks: { color: '#FFF' },
+                      grid: { color: '#555' }
+                  }
+              },
+              plugins: {
+                legend: {
+                  labels: {
+                    color: '#FFF'
+                  }
+                }
+              }
+          }
+      });
+    </script>
+    
+    <!-- Word Cloud -->
+    <h2>Tag Cloud</h2>
+    <div class="word-cloud">
+      {% for tag in data.word_cloud %}
+        {% set fontSize = 10 + tag.count * 3 %}
+        <span style="font-size: {{ fontSize }}px;">{{ tag.tag }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

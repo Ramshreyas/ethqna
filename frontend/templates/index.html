@@ -145,6 +145,64 @@
       color: #FFF;
       cursor: pointer;
     }
+
+    /* Modal overlay */
+    .modal {
+      display: none; /* Hidden by default */
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.8);
+    }
+
+    /* Modal content box */
+    .modal-content {
+      position: relative;
+      margin: 5% auto;
+      width: 90%;
+      height: 80%;
+      background-color: #1E1E1E;
+      border-radius: 4px;
+      padding: 10px;
+    }
+
+    /* Close button (top right of modal) */
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      color: #FFF;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* Fullscreen icon for each panel */
+    .panel-container {
+      position: relative;
+      padding: none;
+      margin: 0;
+      border: none;
+    }
+
+    .fullscreen-btn {
+      position: absolute;
+      right: auto;
+      top: 5px;
+      right: 5px;
+      background: none;
+      border: none;
+      color: #FFD700;
+      font-size: 18px;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 3px;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
@@ -172,6 +230,14 @@
     <h1 class="main-title">Ecosystem Analytics</h1>
     <hr class="divider" />
     <div id="tilesContainer"></div>
+  </div>
+
+  <!-- Fullscreen Modal -->
+  <div id="fullscreenModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="modalCloseBtn">&times;</span>
+      <iframe id="modalIframe" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
   </div>
 
   <script>
@@ -291,28 +357,69 @@
       });
     }
 
+    // Open and close the fullscreen modal.
+    function openFullscreenModal(src) {
+      const modal = document.getElementById("fullscreenModal");
+      const modalIframe = document.getElementById("modalIframe");
+      modalIframe.src = src;
+      modal.style.display = "block";
+    }
+
+    function closeFullscreenModal() {
+      const modal = document.getElementById("fullscreenModal");
+      modal.style.display = "none";
+      document.getElementById("modalIframe").src = ""; // optional: clear source
+    }
+
+    // Add event listener to the close button.
+    document.getElementById("modalCloseBtn").addEventListener("click", closeFullscreenModal);
+
+    // Optionally, close modal when clicking outside the modal-content.
+    window.addEventListener("click", function(event) {
+      const modal = document.getElementById("fullscreenModal");
+      if (event.target == modal) {
+        closeFullscreenModal();
+      }
+    });
+
     // Helper functions to load and remove panels.
     function loadPanel(panelPath) {
-      // Get selected sources from the checkboxes.
+      // Build query string for selected sources.
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
       const query = selectedSources.length ? '?' + selectedSources.map(s => 'sources=' + s).join('&') : '';
       const fullPath = panelPath + query;
       
+      // Prevent duplicate panels.
       if (document.getElementById('tile-' + panelPath)) return;
-      debug("Fetching panel from: " + fullPath);
-      const tile = document.createElement('div');
-      tile.classList.add('tile-panel');
-      tile.id = 'tile-' + panelPath;
-      fetch(fullPath)
-        .then(resp => resp.text())
-        .then(htmlSnippet => {
-          tile.innerHTML = htmlSnippet;
-        })
-        .catch(err => {
-          tile.innerHTML = `<div class="panel-content"><strong>Error loading ${panelPath}:</strong> ${err}</div>`;
-        });
-      tilesContainer.appendChild(tile);
+      debug("Loading panel in iframe from: " + fullPath);
+      
+      // Create a container for the panel.
+      const container = document.createElement('div');
+      container.classList.add('panel-container', 'tile-panel');
+      container.id = 'tile-' + panelPath;
+      
+      // Create the fullscreen button.
+      const fullscreenBtn = document.createElement('button');
+      fullscreenBtn.classList.add('fullscreen-btn');
+      fullscreenBtn.title = "Fullscreen";
+      // Using a Unicode icon for fullscreen (you could substitute an SVG/icon if desired)
+      fullscreenBtn.innerHTML = "&#x26F6;";
+      fullscreenBtn.addEventListener('click', () => {
+        openFullscreenModal(fullPath);
+      });
+      container.appendChild(fullscreenBtn);
+      
+      // Create the iframe.
+      const iframe = document.createElement('iframe');
+      iframe.src = fullPath;
+      iframe.style.width = "100%";
+      iframe.style.height = "400px"; // adjust as needed
+      iframe.style.border = "none";
+      container.appendChild(iframe);
+      
+      // Append container to your tiles container.
+      tilesContainer.appendChild(container);
     }
 
     function removePanel(panelPath) {

@@ -297,6 +297,24 @@ def analytics():
 
     return render_template("analytics.html", user=user_info)
 
+@app.route("/analytics/summary")
+def analytics_summary():
+    """
+    Endpoint for the summary analysis.
+    Accepts selected sources via query parameters (e.g. ?sources=Conversations)
+    and renders the summary analysis template.
+    """
+    selected_sources = request.args.getlist("sources")
+    app.logger.debug("analytics_summary: selected_sources: %s", selected_sources)
+    
+    from .analytics import get_summary_data  # or: from frontend.analytics import get_summary_data
+    data = get_summary_data(selected_sources)
+    app.logger.debug("analytics_summary data: %s", data)
+    
+    return render_template("analytics/summary.html", 
+                           title="Summary",
+                           selected_sources=selected_sources,
+                           data=data)
 
 @app.route("/analytics/data", methods=["GET"])
 def analytics_data():
