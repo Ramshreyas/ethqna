@@ -301,14 +301,26 @@ def analytics():
 def analytics_summary():
     """
     Endpoint for the summary analysis.
-    Accepts selected sources via query parameters (e.g. ?sources=Conversations)
-    and renders the summary analysis template.
+    Accepts selected sources and optional start_date/end_date via query parameters.
     """
     selected_sources = request.args.getlist("sources")
-    app.logger.debug("analytics_summary: selected_sources: %s", selected_sources)
+    start_date_str = request.args.get("start_date")
+    end_date_str = request.args.get("end_date")
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid start_date: %s", start_date_str)
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid end_date: %s", end_date_str)
     
-    from .analytics import get_summary_data  # or: from frontend.analytics import get_summary_data
-    data = get_summary_data(selected_sources)
+    from .analytics import get_summary_data
+    data = get_summary_data(selected_sources, start_date, end_date)
     app.logger.debug("analytics_summary data: %s", data)
     
     return render_template("analytics/summary.html", 
@@ -382,20 +394,26 @@ def analytics_data():
 
 @app.route("/analytics/todo")
 def analytics_todo():
-    """
-    Dynamic analytics panel endpoint for the 'TODO' analysis.
-    Accepts selected sources via query parameters (e.g. ?sources=A&sources=B),
-    calls analytics.py to get a summary, and renders the todo.html template.
-    """
     selected_sources = request.args.getlist("sources")
-    app.logger.debug("analytics_todo: selected_sources: %s", selected_sources)
-    print("DEBUG: analytics_todo selected_sources:", selected_sources)  # Temporary debug print
+    start_date_str = request.args.get("start_date")
+    end_date_str = request.args.get("end_date")
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid start_date: %s", start_date_str)
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid end_date: %s", end_date_str)
     
-    from .analytics import get_analytics_summary  # Adjust import if necessary.
-    summary = get_analytics_summary(selected_sources)
-    app.logger.debug("analytics_todo: summary: %s", summary)
-    print("DEBUG: analytics_todo summary:", summary)  # Temporary debug print
-
+    from .analytics import get_analytics_summary
+    summary = get_analytics_summary(selected_sources, start_date, end_date)
+    app.logger.debug("analytics_todo summary: %s", summary)
+    
     return render_template("analytics/todo.html",
                            title="TODO",
                            selected_sources=selected_sources,

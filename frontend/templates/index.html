@@ -216,6 +216,13 @@
       <div class="list-title" id="sourcesListTitle" style="display: none;">Select Source(s):</div>
       <div class="checkbox-group" id="sourcesList"></div>
 
+      <div id="dateRangePicker" style="margin-top: 10px;">
+        <label for="startDate" style="display: block; color: #FFD700;">Start Date:</label>
+        <input type="date" id="startDate">
+        <label for="endDate" style="display: block; color: #FFD700; margin-top: 5px;">End Date:</label>
+        <input type="date" id="endDate">
+      </div>      
+
       <button id="fetchBtn">Fetch Analytics</button>
 
       <hr class="divider" />
@@ -384,10 +391,27 @@
 
     // Helper functions to load and remove panels.
     function loadPanel(panelPath) {
-      // Build query string for selected sources.
+      // Get selected sources.
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
-      const query = selectedSources.length ? '?' + selectedSources.map(s => 'sources=' + s).join('&') : '';
+
+      // Get the date range values.
+      const startDateVal = document.getElementById("startDate").value;
+      const endDateVal = document.getElementById("endDate").value;
+      
+      // Build query parameters.
+      let queryParams = [];
+      if (selectedSources.length) {
+        queryParams.push(selectedSources.map(s => 'sources=' + s).join('&'));
+      }
+      if (startDateVal) {
+        queryParams.push('start_date=' + encodeURIComponent(startDateVal));
+      }
+      if (endDateVal) {
+        queryParams.push('end_date=' + encodeURIComponent(endDateVal));
+      }
+      const query = queryParams.length ? '?' + queryParams.join('&') : '';
+      
       const fullPath = panelPath + query;
       
       // Prevent duplicate panels.
@@ -403,7 +427,6 @@
       const fullscreenBtn = document.createElement('button');
       fullscreenBtn.classList.add('fullscreen-btn');
       fullscreenBtn.title = "Fullscreen";
-      // Using a Unicode icon for fullscreen (you could substitute an SVG/icon if desired)
       fullscreenBtn.innerHTML = "&#x26F6;";
       fullscreenBtn.addEventListener('click', () => {
         openFullscreenModal(fullPath);
@@ -418,16 +441,8 @@
       iframe.style.border = "none";
       container.appendChild(iframe);
       
-      // Append container to your tiles container.
+      // Append container to the tiles container.
       tilesContainer.appendChild(container);
-    }
-
-    function removePanel(panelPath) {
-      const tile = document.getElementById('tile-' + panelPath);
-      if (tile) {
-        tile.remove();
-        debug("Removed panel: " + panelPath);
-      }
     }
 
     // Set up event listeners.
