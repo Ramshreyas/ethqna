@@ -189,9 +189,22 @@
       border: none;
     }
 
+    .share-btn {
+      position: absolute;
+      bottom: 5px;
+      right: 5px; /* 30px left of the fullscreen button */
+      background: none;
+      border: none;
+      color: #FFD700;
+      font-size: 18px;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 3px;
+      z-index: 11; /* higher than fullscreen button */
+    }
+
     .fullscreen-btn {
       position: absolute;
-      right: auto;
       top: 5px;
       right: 5px;
       background: none;
@@ -406,7 +419,7 @@
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
       
-      // Build query parameters.
+      // Get the date range values.
       let queryParams = [];
       if (selectedSources.length) {
         queryParams.push(selectedSources.map(s => 'sources=' + s).join('&'));
@@ -419,7 +432,7 @@
         queryParams.push('end_date=' + encodeURIComponent(dateRange.end_date));
       }
       const query = queryParams.length ? '?' + queryParams.join('&') : '';
-      const fullPath = panelPath + query;
+      const fullPath = "https://ethint.xyz/" + panelPath + query;
       
       // Prevent duplicate panels.
       if (document.getElementById('tile-' + panelPath)) return;
@@ -429,6 +442,20 @@
       const container = document.createElement('div');
       container.classList.add('panel-container', 'tile-panel');
       container.id = 'tile-' + panelPath;
+      
+      // Create the share button.
+      const shareBtn = document.createElement('button');
+      shareBtn.classList.add('share-btn');
+      shareBtn.title = "Share";
+      shareBtn.innerHTML = "&#x1F517;"; // Unicode link icon
+      shareBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(fullPath).then(() => {
+          alert("URL copied to clipboard: " + fullPath);
+        }).catch((err) => {
+          console.error("Failed to copy URL: ", err);
+        });
+      });
+      container.appendChild(shareBtn);
       
       // Create the fullscreen button.
       const fullscreenBtn = document.createElement('button');
@@ -444,7 +471,7 @@
       const iframe = document.createElement('iframe');
       iframe.src = fullPath;
       iframe.style.width = "100%";
-      iframe.style.height = "400px";
+      iframe.style.height = "400px"; // Adjust as needed.
       iframe.style.border = "none";
       container.appendChild(iframe);
       
