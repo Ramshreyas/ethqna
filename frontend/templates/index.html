@@ -216,12 +216,24 @@
       <div class="list-title" id="sourcesListTitle" style="display: none;">Select Source(s):</div>
       <div class="checkbox-group" id="sourcesList"></div>
 
-      <div id="dateRangePicker" style="margin-top: 10px;">
-        <label for="startDate" style="display: block; color: #FFD700;">Start Date:</label>
-        <input type="date" id="startDate">
-        <label for="endDate" style="display: block; color: #FFD700; margin-top: 5px;">End Date:</label>
-        <input type="date" id="endDate">
-      </div>      
+      <!-- Date Range Picker -->
+      <div id="dateRangeContainer" style="margin-top: 10px;">
+        <label for="dateRangeSelect" style="display: block; color: #FFD700;">Date Range:</label>
+        <select id="dateRangeSelect" style="width: 100%;">
+          <option value="all" selected>All time</option>
+          <option value="last_week">Last Week</option>
+          <option value="last_month">Last Month</option>
+          <option value="last_quarter">Last Quarter</option>
+          <option value="last_year">Last Year</option>
+          <option value="custom">Custom</option>
+        </select>
+        <div id="customDateContainer" style="display: none; margin-top: 5px;">
+          <label for="customStartDate" style="color: #FFD700;">Start Date:</label>
+          <input type="date" id="customStartDate">
+          <label for="customEndDate" style="color: #FFD700; margin-left: 10px;">End Date:</label>
+          <input type="date" id="customEndDate">
+        </div>
+      </div>     
 
       <button id="fetchBtn">Fetch Analytics</button>
 
@@ -389,29 +401,24 @@
       }
     });
 
-    // Helper functions to load and remove panels.
     function loadPanel(panelPath) {
       // Get selected sources.
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
-
-      // Get the date range values.
-      const startDateVal = document.getElementById("startDate").value;
-      const endDateVal = document.getElementById("endDate").value;
       
       // Build query parameters.
       let queryParams = [];
       if (selectedSources.length) {
         queryParams.push(selectedSources.map(s => 'sources=' + s).join('&'));
       }
-      if (startDateVal) {
-        queryParams.push('start_date=' + encodeURIComponent(startDateVal));
+      const dateRange = getSelectedDateRange();
+      if (dateRange.start_date) {
+        queryParams.push('start_date=' + encodeURIComponent(dateRange.start_date));
       }
-      if (endDateVal) {
-        queryParams.push('end_date=' + encodeURIComponent(endDateVal));
+      if (dateRange.end_date) {
+        queryParams.push('end_date=' + encodeURIComponent(dateRange.end_date));
       }
       const query = queryParams.length ? '?' + queryParams.join('&') : '';
-      
       const fullPath = panelPath + query;
       
       // Prevent duplicate panels.
@@ -437,17 +444,81 @@
       const iframe = document.createElement('iframe');
       iframe.src = fullPath;
       iframe.style.width = "100%";
-      iframe.style.height = "400px"; // adjust as needed
+      iframe.style.height = "400px";
       iframe.style.border = "none";
       container.appendChild(iframe);
       
-      // Append container to the tiles container.
       tilesContainer.appendChild(container);
     }
 
     // Set up event listeners.
     fetchBtn.addEventListener('click', fetchAnalytics);
     document.addEventListener('DOMContentLoaded', loadSources);
+
+    // When the date range select changes, show/hide the custom date inputs.
+    document.getElementById("dateRangeSelect").addEventListener("change", function() {
+      if (this.value === "custom") {
+        document.getElementById("customDateContainer").style.display = "block";
+      } else {
+        document.getElementById("customDateContainer").style.display = "none";
+      }
+    });
+
+    // Helper to format a Date object as YYYY-MM-DD.
+    function formatDate(date) {
+      let month = '' + (date.getMonth() + 1);
+      let day = '' + date.getDate();
+      let year = date.getFullYear();
+      if (month.length < 2) month = '0' + month;
+      if (day.length < 2) day = '0' + day;
+      return [year, month, day].join('-');
+    }
+
+    // Returns an object with start_date and end_date based on the selected range.
+    function getSelectedDateRange() {
+      const rangeValue = document.getElementById("dateRangeSelect").value;
+      let start_date = "";
+      let end_date = "";
+      const today = new Date();
+      switch(rangeValue) {
+        case "last_week":
+          const lastWeek = new Date(today);
+          lastWeek.setDate(today.getDate() - 7);
+          start_date = formatDate(lastWeek);
+          end_date = formatDate(today);
+          break;
+        case "last_month":
+          const lastMonth = new Date(today);
+          lastMonth.setMonth(today.getMonth() - 1);
+          start_date = formatDate(lastMonth);
+          end_date = formatDate(today);
+          break;
+        case "last_quarter":
+          const lastQuarter = new Date(today);
+          lastQuarter.setMonth(today.getMonth() - 3);
+          start_date = formatDate(lastQuarter);
+          end_date = formatDate(today);
+          break;
+        case "last_year":
+          const lastYear = new Date(today);
+          lastYear.setFullYear(today.getFullYear() - 1);
+          start_date = formatDate(lastYear);
+          end_date = formatDate(today);
+          break;
+        case "custom":
+          start_date = document.getElementById("customStartDate").value;
+          end_date = document.getElementById("customEndDate").value;
+          break;
+        case "all":
+        default:
+          // No date filter.
+          break;
+      }
+      if(start_date && end_date) {
+        return {start_date: start_date, end_date: end_date};
+      }
+      return {};
+    }
   </script>
 </body>
 </html>
