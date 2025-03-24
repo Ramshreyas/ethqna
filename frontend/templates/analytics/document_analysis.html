@@ -60,9 +60,39 @@
     .panel-content li:last-child {
       border-bottom: none;
     }
+    /* Spinner styles */
+    .spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(30, 30, 30, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #FFD700;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
+  <!-- Spinner Overlay -->
+  <div id="spinner" class="spinner-overlay">
+    <div class="spinner"></div>
+  </div>
+
   <div class="panel">
     <h1>{{ title }}</h1>
     
@@ -72,7 +102,7 @@
       <p><strong>Selected Sources:</strong> All</p>
     {% endif %}
     
-    <h2>Document Clusters</h2>
+    <h2>Thematic Clusters</h2>
     {% if data.clusters %}
       {% for cluster_label, docs in data.clusters.items() %}
         <button class="accordion">{{ cluster_label }} ({{ docs | length }} documents)</button>
@@ -90,19 +120,21 @@
   </div>
   
   <script>
+    // Accordion functionality
     var acc = document.getElementsByClassName("accordion");
-    var i;
-    for (i = 0; i < acc.length; i++) {
+    for (var i = 0; i < acc.length; i++) {
       acc[i].addEventListener("click", function() {
         this.classList.toggle("active");
         var panel = this.nextElementSibling;
-        if (panel.style.display === "block") {
-          panel.style.display = "none";
-        } else {
-          panel.style.display = "block";
-        }
+        panel.style.display = panel.style.display === "block" ? "none" : "block";
       });
     }
+    
+    // Hide spinner when page is fully loaded
+    window.addEventListener('load', function() {
+      var spinner = document.getElementById('spinner');
+      spinner.style.display = 'none';
+    });
   </script>
 </body>
 </html>
