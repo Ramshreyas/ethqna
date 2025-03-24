@@ -22,6 +22,23 @@
     h1 {
       color: #FFD700;
     }
+    .cluster {
+      margin-bottom: 20px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 10px;
+      background-color: #333;
+    }
+    .cluster h3 {
+      margin: 0 0 10px 0;
+      color: #FFD700;
+    }
+    .takeaways {
+      margin: 0 0 10px 0;
+      padding: 0;
+      list-style: disc inside;
+      color: #ccc;
+    }
     .accordion {
       background-color: #444;
       color: #fff;
@@ -32,7 +49,6 @@
       border: none;
       outline: none;
       transition: background-color 0.2s ease;
-      margin-bottom: 5px;
       border-radius: 4px;
     }
     .accordion:hover {
@@ -44,9 +60,10 @@
     .panel-content {
       padding: 0 10px;
       display: none;
-      background-color: #333;
+      background-color: #2A2A2A;
       overflow: hidden;
       border-radius: 0 0 4px 4px;
+      margin-top: 5px;
     }
     .panel-content ul {
       list-style: none;
@@ -60,39 +77,16 @@
     .panel-content li:last-child {
       border-bottom: none;
     }
-    /* Spinner styles */
-    .spinner-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(30, 30, 30, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
+    a {
+      color: #FFD700;
+      text-decoration: none;
     }
-    .spinner {
-      border: 8px solid #f3f3f3;
-      border-top: 8px solid #FFD700;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <!-- Spinner Overlay -->
-  <div id="spinner" class="spinner-overlay">
-    <div class="spinner"></div>
-  </div>
-
   <div class="panel">
     <h1>{{ title }}</h1>
     
@@ -104,14 +98,33 @@
     
     <h2>Thematic Clusters</h2>
     {% if data.clusters %}
-      {% for cluster_label, docs in data.clusters.items() %}
-        <button class="accordion">{{ cluster_label }} ({{ docs | length }} documents)</button>
-        <div class="panel-content">
-          <ul>
-            {% for doc_title in docs %}
-              <li>{{ doc_title }}</li>
-            {% endfor %}
-          </ul>
+      {% for cluster_label, cluster_data in data.clusters.items() %}
+        <div class="cluster">
+          <h3>{{ cluster_label }} ({{ cluster_data.documents | length }} documents)</h3>
+          <p><strong>Key Takeaways:</strong></p>
+          {% if cluster_data.takeaways and cluster_data.takeaways|length > 0 %}
+            <ul class="takeaways">
+              {% for takeaway in cluster_data.takeaways %}
+                <li>{{ takeaway }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>No common takeaways available.</p>
+          {% endif %}
+          <button class="accordion">Show Documents</button>
+          <div class="panel-content">
+            <ul>
+              {% for doc_title in cluster_data.documents %}
+                <li>
+                  {% if data.pdf_mapping[doc_title] %}
+                    <a href="/pdf?doc={{ data.pdf_mapping[doc_title] }}" target="_blank">{{ doc_title }}</a>
+                  {% else %}
+                    {{ doc_title }}
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
         </div>
       {% endfor %}
     {% else %}
@@ -120,21 +133,14 @@
   </div>
   
   <script>
-    // Accordion functionality
     var acc = document.getElementsByClassName("accordion");
     for (var i = 0; i < acc.length; i++) {
       acc[i].addEventListener("click", function() {
         this.classList.toggle("active");
         var panel = this.nextElementSibling;
-        panel.style.display = panel.style.display === "block" ? "none" : "block";
+        panel.style.display = (panel.style.display === "block") ? "none" : "block";
       });
     }
-    
-    // Hide spinner when page is fully loaded
-    window.addEventListener('load', function() {
-      var spinner = document.getElementById('spinner');
-      spinner.style.display = 'none';
-    });
   </script>
 </body>
 </html>

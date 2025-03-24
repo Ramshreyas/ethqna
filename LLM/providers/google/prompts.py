@@ -120,9 +120,15 @@ def build_chat_prompt(user_message: str) -> str:
 
 
 DOCUMENT_CLUSTERING_PROMPT = """
-You are an expert in the Ethereum Ecosystem sectors. Given the following JSON array of documents, where each document has a "title" and a "description" field, cluster the documents based on the sector, vertical, or domain of the Ethereum Ecosystem that they pertain to.
-For each cluster, provide a label that best describes the sector, and list the titles of the documents that belong to that cluster.
-Return your answer as a JSON object with cluster labels as keys and lists of document titles as values.
+You are an expert in the Ethereum Ecosystem sectors. Given the following JSON array of documents, where each document has a "title" and a "description" field, perform a detailed clustering of the documents based on the sector, vertical, or domain of the Ethereum Ecosystem that they pertain to.
+For each cluster, please provide:
+- A concise label that best describes the sector.
+- A list of document titles that belong to that cluster.
+- 1–3 key common takeaways that capture useful signals or trends from the documents in that cluster. Only include takeaways that are clearly supported by the document descriptions.
+Return your answer as a JSON object where each key is a cluster label and its value is an object with two keys:
+    "documents": a list of document titles,
+    "takeaways": a list of key common takeaways.
 JSON input:
 {documents_json}
 """
+

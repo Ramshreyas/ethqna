@@ -145,7 +145,14 @@ def get_document_analysis_data(selected_sources, start_date=None, end_date=None)
     docs = load_documents()
     filtered_docs = filter_documents(docs, selected_sources, start_date, end_date)
     
-    # Prepare input for clustering: only include documents with a description.
+    # Build a mapping of document title to its pdf_file.
+    title_to_pdf = {}
+    for doc in filtered_docs:
+        if doc.get("description") and doc.get("pdf_file"):
+            title = doc.get("title") or "Untitled"
+            title_to_pdf[title] = doc.get("pdf_file")
+    
+    import json
     clustering_input = []
     for doc in filtered_docs:
         if doc.get("description"):
@@ -154,29 +161,26 @@ def get_document_analysis_data(selected_sources, start_date=None, end_date=None)
                 "description": doc.get("description")
             })
     
-    # Serialize the input in a deterministic way (sorted keys)
+    # Serialize input deterministically and compute a hash.
     documents_json = json.dumps(clustering_input, sort_keys=True)
-    
-    # Compute a hash for the input configuration
+    import hashlib
     input_hash = hashlib.md5(documents_json.encode('utf-8')).hexdigest()
     
-    # Determine the cache file path (ensure the analytics cache directory exists)
+    import os
     cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
     cache_file = os.path.join(cache_dir, f"clusters_{input_hash}.json")
     
-    # Check if the cache file exists; if so, load and return the cached clusters.
     if os.path.exists(cache_file):
         try:
             with open(cache_file, "r") as f:
                 clusters = json.load(f)
-            return {"clusters": clusters}
+            return {"clusters": clusters, "pdf_mapping": title_to_pdf}
         except Exception as e:
-            # If there's an error reading the cache, proceed to run inference.
             print(f"Error reading cache file: {e}")
     
-    # Call the LLM service to cluster documents if no cached result exists.
+    # Call LLM service for clustering if no cached result exists.
     try:
         llm = LLMService()
         from LLM.providers.google.prompts import DOCUMENT_CLUSTERING_PROMPT
@@ -185,11 +189,11 @@ def get_document_analysis_data(selected_sources, start_date=None, end_date=None)
     except Exception as e:
         clusters = {"error": f"Clustering failed: {e}"}
     
-    # Cache the inference result for future use.
     try:
         with open(cache_file, "w") as f:
             json.dump(clusters, f)
     except Exception as e:
         print(f"Error writing cache file: {e}")
     
-    return {"clusters": clusters}
+    return {"clusters": clusters, "pdf_mapping": title_to_pdf}
+
