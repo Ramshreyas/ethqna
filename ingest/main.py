@@ -338,7 +338,7 @@ async def upload_pdf(file: UploadFile = File(...), source: str = Form(...)):
         "description": summary,
         "title": metadata.get("title", "Unknown Title"),
         "date": metadata.get("date", None),
-        "authors": metadata.get("authors", []),
+        "authors": metadata.get("authors") or [],
         "tags": metadata.get("tags", []),
         "source": source_to_use
     }
