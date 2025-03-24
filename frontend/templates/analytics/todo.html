@@ -2,9 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{{ title }}</title>
+    <title>What would you like to see here?</title>
     <style>
-      /* Basic styling for the analytics panel in dark mode */
+      /* Basic styling for the invitation panel in dark mode */
       body {
           font-family: sans-serif;
           background-color: #1E1E1E;
@@ -22,32 +22,21 @@
       .panel h2 {
           margin-top: 0;
       }
-      .metadata {
-          margin-top: 10px;
+      .content {
+          margin-top: 20px;
       }
-      .metadata p {
-          margin: 5px 0;
+      a {
+          color: #1E90FF;
       }
     </style>
 </head>
 <body>
     <div class="panel">
-        <h2>{{ title }}</h2>
-        <div class="metadata">
-            <p><strong>Selected Sources:</strong> 
-              {% if selected_sources %}
-                {{ selected_sources | join(', ') }}
-              {% else %}
-                All
-              {% endif %}
-            </p>
-            <p><strong>Total Documents:</strong> {{ summary.total_docs }}</p>
-            <p><strong>Unique Authors:</strong> {{ summary.unique_authors_count }}</p>
-            <p><strong>Date Range:</strong> {{ summary.earliest_date }} to {{ summary.latest_date }}</p>
-        </div>
+        <h2>What would you like to see here?</h2>
         <div class="content">
-            <!-- Placeholder for advanced analytics visualizations -->
-            <p>This panel will display advanced analytics visualizations based on the selected sources.</p>
+            <p>We invite teams from the Ethereum Foundation to share your ideas for analysis. Think about the kind of insights and information that would empower you to navigate the ecosystem more effectively.</p>
+            <p>Please let us know your suggestions by filling out our <a href="https://forms.gle/DC6frMsGXHVgStcR9" target="_blank">Google Form</a>.</p>
+            <p>Thank you!!</p>
         </div>
     </div>
 </body>
