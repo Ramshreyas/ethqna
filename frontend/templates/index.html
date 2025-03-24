@@ -18,7 +18,7 @@
     /* Side panel */
     .sidebar {
       position: absolute;
-      top: 0; 
+      top: 0;
       left: 0;
       width: 250px;
       height: 100%;
@@ -64,7 +64,7 @@
     /* Main content */
     .main-content {
       position: absolute;
-      top: 0; 
+      top: 0;
       left: 0;
       height: 100%;
       box-sizing: border-box;
@@ -181,9 +181,9 @@
       cursor: pointer;
     }
 
-    /* Fullscreen icon for each panel */
+    /* Ensures the fullscreen button is absolutely positioned above the iframe */
     .panel-container {
-      position: relative;
+      position: relative; /* crucial for absolutely positioned children */
       padding: none;
       margin: 0;
       border: none;
@@ -192,7 +192,7 @@
     .share-btn {
       position: absolute;
       bottom: 5px;
-      right: 5px; /* 30px left of the fullscreen button */
+      right: 5px;
       background: none;
       border: none;
       color: #FFD700;
@@ -200,7 +200,7 @@
       padding: 4px 6px;
       cursor: pointer;
       border-radius: 3px;
-      z-index: 11; /* higher than fullscreen button */
+      z-index: 11; /* above fullscreen button */
     }
 
     .fullscreen-btn {
@@ -246,7 +246,7 @@
           <label for="customEndDate" style="color: #FFD700; margin-left: 10px;">End Date:</label>
           <input type="date" id="customEndDate">
         </div>
-      </div>     
+      </div>
 
       <button id="fetchBtn">Fetch Analytics</button>
 
@@ -273,7 +273,7 @@
   </div>
 
   <script>
-    // Debug helper: log messages with a prefix.
+    // Debug helper
     function debug(msg) {
       console.log("[DEBUG]", msg);
     }
@@ -281,7 +281,6 @@
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('mainContent');
     const toggleBtn = document.getElementById('toggleSidebarBtn');
-
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('collapsed');
       debug("Toggled sidebar collapsed state");
@@ -389,6 +388,14 @@
       });
     }
 
+    // Remove a panel by ID.
+    function removePanel(panelPath) {
+      const panel = document.getElementById('tile-' + panelPath);
+      if (panel) {
+        panel.remove();
+      }
+    }
+
     // Open and close the fullscreen modal.
     function openFullscreenModal(src) {
       const modal = document.getElementById("fullscreenModal");
@@ -414,6 +421,7 @@
       }
     });
 
+    // Dynamically create a tile panel + iframe.
     function loadPanel(panelPath) {
       // Get selected sources.
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
@@ -432,7 +440,10 @@
         queryParams.push('end_date=' + encodeURIComponent(dateRange.end_date));
       }
       const query = queryParams.length ? '?' + queryParams.join('&') : '';
-      const fullPath = "https://ethint.xyz/" + panelPath + query;
+
+      // Use base_url from Flask context
+      const baseUrl = "{{ base_url }}";
+      const fullPath = baseUrl + panelPath + query;
       
       // Prevent duplicate panels.
       if (document.getElementById('tile-' + panelPath)) return;
@@ -477,10 +488,6 @@
       
       tilesContainer.appendChild(container);
     }
-
-    // Set up event listeners.
-    fetchBtn.addEventListener('click', fetchAnalytics);
-    document.addEventListener('DOMContentLoaded', loadSources);
 
     // When the date range select changes, show/hide the custom date inputs.
     document.getElementById("dateRangeSelect").addEventListener("change", function() {
@@ -538,14 +545,18 @@
           break;
         case "all":
         default:
-          // No date filter.
+          // No date filter
           break;
       }
-      if(start_date && end_date) {
+      if (start_date && end_date) {
         return {start_date: start_date, end_date: end_date};
       }
       return {};
     }
+
+    // Initialize
+    fetchBtn.addEventListener('click', fetchAnalytics);
+    document.addEventListener('DOMContentLoaded', loadSources);
   </script>
 </body>
 </html>

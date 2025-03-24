@@ -128,3 +128,25 @@ class LLMService:
 
         return result
     
+    def cluster_documents(self, documents_json: str, prompt: str) -> dict:
+        print("DEBUG: Clustering documents using LLM...", flush=True)
+        contents = [documents_json, prompt]
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=types.GenerateContentConfig(system_instruction=prompt),
+            contents=contents
+        )
+        raw_response = response.text.strip()
+        print("DEBUG: Gemini API cluster documents response:", raw_response, flush=True)
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+        try:
+            result = json.loads(raw_response)
+        except Exception as e:
+            raise Exception(f"Error parsing cluster documents response: {e}. Raw response: {raw_response}")
+        return result

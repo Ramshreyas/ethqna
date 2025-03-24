@@ -58,9 +58,20 @@ llm_service = get_llm_provider()
 # Set development mode flag (set DEV_MODE=1 in your environment for local testing)
 DEV_MODE = os.environ.get('DEV_MODE', '0') == '1'
 
+# Set the BASE_URL based on DEV_MODE
+if DEV_MODE:
+    BASE_URL = "http://localhost:5000/"
+else:
+    BASE_URL = "https://ethint.xyz/"
+
 app = Flask(__name__)
 app.secret_key = "supersekrit"  # Replace with a secure key in production
 app.logger.setLevel(logging.DEBUG)
+
+# Inject BASE_URL into all templates.
+@app.context_processor
+def inject_base_url():
+    return dict(base_url=BASE_URL)
 
 # Force Flask to generate HTTPS URLs and trust reverse-proxy headers.
 app.config['PREFERRED_URL_SCHEME'] = 'https'
@@ -183,13 +194,11 @@ def index():
         return "Access denied: You must use an ethereum.org email", 403
     return render_template("index.html", user=user_info)
 
-
 @app.route("/logout")
 def logout():
     if google_bp.token:
         del google_bp.token
     return redirect(url_for("index"))
-
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -223,7 +232,6 @@ def chat():
 
     print(f"Returning response: {combined_response}", flush=True)
     return jsonify({'response': combined_response, 'page': page_number})
-
 
 @app.route("/pdf")
 def pdf():
@@ -276,25 +284,20 @@ def analytics():
     if DEV_MODE:
         user_info = {"email": "local@test.com", "name": "Local Tester"}
         return render_template("analytics.html", user=user_info)
-
     if not google.authorized:
         return render_template("login.html")
-
     try:
         resp = google.get("/oauth2/v2/userinfo")
     except TokenExpiredError:
         return redirect(url_for("google.login"))
     except Exception:
         return redirect(url_for("google.login"))
-
     if not resp.ok:
         return redirect(url_for("google.login"))
-
     user_info = resp.json()
     email = user_info.get("email", "")
     if not email.endswith("@ethereum.org"):
         return "Access denied: You must use an ethereum.org email", 403
-
     return render_template("analytics.html", user=user_info)
 
 @app.route("/analytics/summary")
@@ -478,6 +481,33 @@ def api_analytics():
         "available_sources": available_sources,
         "visualizations": result
     })
+
+@app.route("/analytics/document_analysis")
+def analytics_document_analysis():
+    selected_sources = request.args.getlist("sources")
+    start_date_str = request.args.get("start_date")
+    end_date_str = request.args.get("end_date")
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid start_date: %s", start_date_str)
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid end_date: %s", end_date_str)
+    
+    from .analytics import get_document_analysis_data
+    data = get_document_analysis_data(selected_sources, start_date, end_date)
+    app.logger.debug("analytics_document_analysis data: %s", data)
+    
+    return render_template("analytics/document_analysis.html", 
+                           title="Document Analysis",
+                           selected_sources=selected_sources,
+                           data=data)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
