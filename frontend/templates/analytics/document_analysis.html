@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>{{ title }}</title>
   <style>
-    /* Remove default margin, use consistent padding for the body */
     body {
       margin: 0;
       padding: 20px;
@@ -12,30 +11,25 @@
       background-color: #1E1E1E;
       color: #FFF;
     }
-
     .panel {
       background-color: #2A2A2A;
       border: 1px solid #444;
       border-radius: 4px;
-      /* Remove margin so top spacing is controlled by body padding */
       margin: 0;
       padding: 20px;
       width: auto;
-      max-width: none;  /* let the panel stretch to full width */
+      max-width: none; /* let the panel stretch to full width */
       box-sizing: border-box;
     }
-
     h1 {
       color: #FFD700;
     }
-
     .clusters-container {
       display: grid;
       /* smaller min-width allows an extra column if space is available */
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
     }
-
     .cluster {
       border: 1px solid #555;
       border-radius: 4px;
@@ -52,7 +46,6 @@
       list-style: disc inside;
       color: #ccc;
     }
-
     .accordion {
       background-color: #444;
       color: #fff;
@@ -71,7 +64,6 @@
     .active, .accordion:active {
       background-color: #666;
     }
-
     .panel-content {
       padding: 0 10px;
       display: none;
@@ -104,19 +96,27 @@
 <body>
   <div class="panel">
     <h1>{{ title }}</h1>
-    
+
     {% if selected_sources %}
       <p><strong>Selected Sources:</strong> {{ selected_sources | join(', ') }}</p>
     {% else %}
       <p><strong>Selected Sources:</strong> All</p>
     {% endif %}
-    
+
+    {% if data.clusters %}
+      {% set ns = namespace(total=0) %}
+      {% for cluster_label, cluster_data in data.clusters.items() %}
+        {% set ns.total = ns.total + (cluster_data.documents|length) %}
+      {% endfor %}
+      <p><strong>Number of Documents:</strong> {{ ns.total }}</p>
+    {% endif %}
+
     <h2>Thematic Clusters</h2>
     {% if data.clusters %}
       <div class="clusters-container">
         {% for cluster_label, cluster_data in data.clusters.items() %}
           <div class="cluster">
-            <h3>{{ cluster_label }} ({{ cluster_data.documents | length }} documents)</h3>
+            <h3>{{ cluster_label }} ({{ cluster_data.documents|length }} documents)</h3>
             <p><strong>Key Takeaways:</strong></p>
             {% if cluster_data.takeaways and cluster_data.takeaways|length > 0 %}
               <ul class="takeaways">
