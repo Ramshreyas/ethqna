@@ -14,7 +14,6 @@
       font-family: sans-serif;
       overflow: hidden;
     }
-
     /* Sidebar styles */
     .sidebar {
       position: absolute;
@@ -54,7 +53,6 @@
     .toggle-btn:focus {
       outline: 1px solid #999;
     }
-
     /* Main content with header and iframe */
     .main-content {
       position: absolute;
@@ -76,7 +74,6 @@
       left: 60px;
       width: calc(100% - 60px);
     }
-    
     /* Main header styling */
     .main-header {
       padding: 20px;
@@ -103,7 +100,6 @@
       border-top: 1px solid #444;
       margin: 10px 0;
     }
-
     /* Modal overlay (for fullscreen and about) */
     .modal {
       display: none;
@@ -144,7 +140,6 @@
       border-radius: 4px;
       position: relative;
     }
-
     /* Radio group styling for analytics */
     .radio-group label {
       display: block;
@@ -153,7 +148,6 @@
     .radio-group input[type="radio"] {
       margin-right: 6px;
     }
-
     /* Checkbox group styling for sources */
     .checkbox-group label {
       display: block;
@@ -184,7 +178,6 @@
       <!-- Sources List -->
       <div class="list-title" id="sourcesListTitle" style="display: none;">Select Source(s):</div>
       <div class="checkbox-group" id="sourcesList"></div>
-
       <!-- Date Range Picker -->
       <div id="dateRangeContainer" style="margin-top: 10px;">
         <label for="dateRangeSelect" style="display: block; color: #FFD700;">Date Range:</label>
@@ -203,11 +196,8 @@
           <input type="date" id="customEndDate">
         </div>
       </div>
-
       <button id="fetchBtn">Fetch Analytics</button>
-
       <hr class="divider" />
-
       <!-- Available Analytics rendered as radio buttons -->
       <div class="list-title" id="analyticsListTitle" style="display: none;">Available Analytics:</div>
       <div id="vizListContainer"></div>
@@ -238,7 +228,7 @@
   <div id="aboutModal" class="modal">
     <div class="modal-content">
       <span class="close-btn" id="aboutModalCloseBtn">&times;</span>
-      <h2>Ethereum Ecosystem Intelligence/h2>
+      <h2>About This Dashboard</h2>
       <p>This dashboard is meant to organise and present the information gathered by the Ethereum Ecosystem Intelligence team.</p>
       <p>We gather information from all kinds of sources including:</p>
       <ul>
@@ -283,6 +273,9 @@
     });
 
     const fetchBtn = document.getElementById('fetchBtn');
+    // Attach click event to fetchBtn so that Fetch Analytics is triggered on button click.
+    fetchBtn.addEventListener('click', fetchAnalytics);
+
     const sourcesList = document.getElementById('sourcesList');
     const sourcesListTitle = document.getElementById('sourcesListTitle');
     const vizListContainer = document.getElementById('vizListContainer');
@@ -341,7 +334,9 @@
       if (dateRange.end_date) {
         queryParams.push('end_date=' + encodeURIComponent(dateRange.end_date));
       }
-      const query = queryParams.length ? '?' + queryParams.join('&') : '';
+      // Append a timestamp to force the iframe to reload.
+      const ts = Date.now();
+      const query = queryParams.length ? '?' + queryParams.join('&') + '&_ts=' + ts : '?_ts=' + ts;
 
       const baseUrl = "{{ base_url }}";
       const fullPath = baseUrl + panelPath + query;
