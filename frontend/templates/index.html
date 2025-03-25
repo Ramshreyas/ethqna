@@ -82,11 +82,21 @@
       padding: 20px;
       flex: 0 0 auto;
     }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     h1.main-title {
       margin: 0;
       font-size: 1.5rem;
       font-weight: normal;
       color: #FFD700;
+    }
+    .about-link {
+      color: #FFD700;
+      text-decoration: none;
+      cursor: pointer;
     }
     .divider {
       border: 0;
@@ -94,7 +104,7 @@
       margin: 10px 0;
     }
 
-    /* Modal overlay (optional) */
+    /* Modal overlay (for fullscreen and about) */
     .modal {
       display: none;
       position: fixed;
@@ -123,6 +133,16 @@
       font-size: 28px;
       font-weight: bold;
       cursor: pointer;
+    }
+    /* About Modal specific styling */
+    #aboutModal .modal-content {
+      margin: 10% auto;
+      padding: 20px;
+      border: 1px solid #444;
+      width: 80%;
+      max-width: 600px;
+      border-radius: 4px;
+      position: relative;
     }
 
     /* Radio group styling for analytics */
@@ -197,7 +217,10 @@
   <!-- Main Content with header and iframe -->
   <div id="mainContent" class="main-content with-sidebar">
     <div class="main-header">
-      <h1 class="main-title">Ethereum Ecosystem Intelligence</h1>
+      <div class="header-top">
+        <h1 class="main-title">Ethereum Ecosystem Intelligence</h1>
+        <a href="#" id="aboutLink" class="about-link">About</a>
+      </div>
       <hr class="divider" />
     </div>
     <iframe id="mainIframe" style="width: 100%; flex: 1; border: none;"></iframe>
@@ -211,17 +234,52 @@
     </div>
   </div>
 
+  <!-- About Modal -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="aboutModalCloseBtn">&times;</span>
+      <h2>Ethereum Ecosystem Intelligence/h2>
+      <p>This dashboard is meant to organise and present the information gathered by the Ethereum Ecosystem Intelligence team.</p>
+      <p>We gather information from all kinds of sources including:</p>
+      <ul>
+        <li>Direct conversations with stakeholders from across the ecosystem</li>
+        <li>Twitter Spaces we conduct</li>
+        <li>Public forums where the Ethereum community conducts its discourse</li>
+        <li>Public research and analysis by ecosystem participants</li>
+      </ul>
+      <p>If there is any specific information source you would like to add, or analysis you would like us to conduct, please fill out our <a href="https://forms.gle/DC6frMsGXHVgStcR9" target="_blank" style="color: #FFD700;">feedback form</a>.</p>
+    </div>
+  </div>
+
   <script>
     // Debug helper function.
     function debug(msg) {
       console.log("[DEBUG]", msg);
     }
 
+    // Sidebar toggle
     const sidebar = document.getElementById('sidebar');
     const toggleBtn = document.getElementById('toggleSidebarBtn');
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('collapsed');
       debug("Toggled sidebar collapsed state");
+    });
+
+    // About modal logic
+    const aboutLink = document.getElementById('aboutLink');
+    const aboutModal = document.getElementById('aboutModal');
+    const aboutModalCloseBtn = document.getElementById('aboutModalCloseBtn');
+    aboutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      aboutModal.style.display = 'block';
+    });
+    aboutModalCloseBtn.addEventListener('click', () => {
+      aboutModal.style.display = 'none';
+    });
+    window.addEventListener('click', (e) => {
+      if (e.target === aboutModal) {
+        aboutModal.style.display = 'none';
+      }
     });
 
     const fetchBtn = document.getElementById('fetchBtn');
