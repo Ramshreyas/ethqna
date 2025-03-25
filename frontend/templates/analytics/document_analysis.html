@@ -4,30 +4,38 @@
   <meta charset="UTF-8">
   <title>{{ title }}</title>
   <style>
+    /* Remove default margin, use consistent padding for the body */
     body {
+      margin: 0;
+      padding: 20px;
       font-family: sans-serif;
       background-color: #1E1E1E;
       color: #FFF;
-      margin: 0;
-      padding: 20px;
     }
+
     .panel {
       background-color: #2A2A2A;
       border: 1px solid #444;
       border-radius: 4px;
+      /* Remove margin so top spacing is controlled by body padding */
+      margin: 0;
       padding: 20px;
-      margin: 20px auto;
-      max-width: 1200px; /* Increased max-width to better use horizontal space */
+      width: auto;
+      max-width: none;  /* let the panel stretch to full width */
+      box-sizing: border-box;
     }
+
     h1 {
       color: #FFD700;
     }
-    /* New container for multi-column layout */
+
     .clusters-container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      /* smaller min-width allows an extra column if space is available */
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
     }
+
     .cluster {
       border: 1px solid #555;
       border-radius: 4px;
@@ -44,6 +52,7 @@
       list-style: disc inside;
       color: #ccc;
     }
+
     .accordion {
       background-color: #444;
       color: #fff;
@@ -62,6 +71,7 @@
     .active, .accordion:active {
       background-color: #666;
     }
+
     .panel-content {
       padding: 0 10px;
       display: none;
@@ -103,7 +113,6 @@
     
     <h2>Thematic Clusters</h2>
     {% if data.clusters %}
-      <!-- Wrap clusters in a container for multi-column layout -->
       <div class="clusters-container">
         {% for cluster_label, cluster_data in data.clusters.items() %}
           <div class="cluster">
@@ -139,7 +148,7 @@
       <p>No clustering data available.</p>
     {% endif %}
   </div>
-  
+
   <script>
     var acc = document.getElementsByClassName("accordion");
     for (var i = 0; i < acc.length; i++) {
