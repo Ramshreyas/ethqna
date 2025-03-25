@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Two-Panel Layout (Analytics with Tiling)</title>
+  <title>Analytics Dashboard</title>
   <style>
     /* Basic reset + dark mode */
     html, body {
@@ -15,7 +15,7 @@
       overflow: hidden;
     }
 
-    /* Side panel */
+    /* Sidebar styles */
     .sidebar {
       position: absolute;
       top: 0;
@@ -30,8 +30,6 @@
     .sidebar.collapsed {
       width: 60px;
     }
-
-    /* Sidebar header */
     .sidebar-header {
       display: flex;
       align-items: center;
@@ -39,16 +37,12 @@
       background-color: #333;
       padding: 10px;
     }
-
-    /* Content in the side panel (hidden if collapsed) */
     .sidebar-content {
       padding: 10px;
     }
     .sidebar.collapsed .sidebar-content {
       display: none;
     }
-
-    /* Toggle button in the header */
     .toggle-btn {
       background: none;
       border: none;
@@ -61,17 +55,18 @@
       outline: 1px solid #999;
     }
 
-    /* Main content */
+    /* Main content with header and iframe */
     .main-content {
       position: absolute;
       top: 0;
       left: 0;
       height: 100%;
       box-sizing: border-box;
-      transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
-      overflow-y: auto;
+      overflow: hidden;
       background-color: #1E1E1E;
-      padding: 20px;
+      transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
+      display: flex;
+      flex-direction: column;
     }
     .main-content.with-sidebar {
       left: 250px;
@@ -81,53 +76,65 @@
       left: 60px;
       width: calc(100% - 60px);
     }
-
-    /* Title styling in the main panel */
+    
+    /* Main header styling */
+    .main-header {
+      padding: 20px;
+      flex: 0 0 auto;
+    }
     h1.main-title {
       margin: 0;
-      padding: 20px 0 10px 20px;
       font-size: 1.5rem;
       font-weight: normal;
       color: #FFD700;
-      text-align: left;
     }
-
-    /* Divider for main panel */
     .divider {
       border: 0;
       border-top: 1px solid #444;
-      margin: 0 20px 20px 20px;
+      margin: 10px 0;
     }
 
-    /* Container for the tiled panels using a 2-col grid */
-    #tilesContainer {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-gap: 1rem;
-      padding: 0 20px 20px 20px;
-      box-sizing: border-box;
+    /* Modal overlay (optional) */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.8);
     }
-
-    /* Each tile is a simple panel */
-    .tile-panel {
-      background-color: #2A2A2A;
-      border: 1px solid #444;
+    .modal-content {
+      position: relative;
+      margin: 5% auto;
+      width: 90%;
+      height: 80%;
+      background-color: #1E1E1E;
       border-radius: 4px;
       padding: 10px;
-      aspect-ratio: 1 / 0.5;
     }
-    .tile-panel .panel-content {
-      padding: 4px;
-    }
-
-    /* Titles for the checkbox lists in the side panel */
-    .list-title {
-      color: #FFD700;
-      margin-bottom: 6px;
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      color: #FFF;
+      font-size: 28px;
       font-weight: bold;
+      cursor: pointer;
     }
 
-    /* Basic styling for checkboxes and button */
+    /* Radio group styling for analytics */
+    .radio-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .radio-group input[type="radio"] {
+      margin-right: 6px;
+    }
+
+    /* Checkbox group styling for sources */
     .checkbox-group label {
       display: block;
       margin-bottom: 5px;
@@ -145,87 +152,16 @@
       color: #FFF;
       cursor: pointer;
     }
-
-    /* Modal overlay */
-    .modal {
-      display: none; /* Hidden by default */
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.8);
-    }
-
-    /* Modal content box */
-    .modal-content {
-      position: relative;
-      margin: 5% auto;
-      width: 90%;
-      height: 80%;
-      background-color: #1E1E1E;
-      border-radius: 4px;
-      padding: 10px;
-    }
-
-    /* Close button (top right of modal) */
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      color: #FFF;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    /* Ensures the fullscreen button is absolutely positioned above the iframe */
-    .panel-container {
-      position: relative; /* crucial for absolutely positioned children */
-      padding: none;
-      margin: 0;
-      border: none;
-    }
-
-    .share-btn {
-      position: absolute;
-      bottom: 5px;
-      right: 5px;
-      background: none;
-      border: none;
-      color: #FFD700;
-      font-size: 18px;
-      padding: 4px 6px;
-      cursor: pointer;
-      border-radius: 3px;
-      z-index: 11; /* above fullscreen button */
-    }
-
-    .fullscreen-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: none;
-      border: none;
-      color: #FFD700;
-      font-size: 18px;
-      padding: 4px 6px;
-      cursor: pointer;
-      border-radius: 3px;
-      z-index: 10;
-    }
   </style>
 </head>
 <body>
-  <!-- Side Panel -->
+  <!-- Sidebar -->
   <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
       <button id="toggleSidebarBtn" class="toggle-btn">&#9776;</button>
     </div>
     <div class="sidebar-content">
-      <!-- The sources list will be populated on page load -->
+      <!-- Sources List -->
       <div class="list-title" id="sourcesListTitle" style="display: none;">Select Source(s):</div>
       <div class="checkbox-group" id="sourcesList"></div>
 
@@ -252,19 +188,22 @@
 
       <hr class="divider" />
 
+      <!-- Available Analytics rendered as radio buttons -->
       <div class="list-title" id="analyticsListTitle" style="display: none;">Available Analytics:</div>
       <div id="vizListContainer"></div>
     </div>
   </div>
 
-  <!-- Main Content -->
+  <!-- Main Content with header and iframe -->
   <div id="mainContent" class="main-content with-sidebar">
-    <h1 class="main-title">Ecosystem Analytics</h1>
-    <hr class="divider" />
-    <div id="tilesContainer"></div>
+    <div class="main-header">
+      <h1 class="main-title">Ethereum Ecosystem Intelligence</h1>
+      <hr class="divider" />
+    </div>
+    <iframe id="mainIframe" style="width: 100%; flex: 1; border: none;"></iframe>
   </div>
 
-  <!-- Fullscreen Modal -->
+  <!-- Fullscreen Modal (optional) -->
   <div id="fullscreenModal" class="modal">
     <div class="modal-content">
       <span class="close-btn" id="modalCloseBtn">&times;</span>
@@ -273,13 +212,12 @@
   </div>
 
   <script>
-    // Debug helper
+    // Debug helper function.
     function debug(msg) {
       console.log("[DEBUG]", msg);
     }
 
     const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
     const toggleBtn = document.getElementById('toggleSidebarBtn');
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('collapsed');
@@ -291,14 +229,13 @@
     const sourcesListTitle = document.getElementById('sourcesListTitle');
     const vizListContainer = document.getElementById('vizListContainer');
     const analyticsListTitle = document.getElementById('analyticsListTitle');
-    const tilesContainer = document.getElementById('tilesContainer');
 
     // Load available sources on page load.
     function loadSources() {
       fetch("/fetch_analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}) // No sources specified; expecting only available_sources.
+        body: JSON.stringify({}) // Expecting available_sources.
       })
       .then(resp => resp.json())
       .then(data => {
@@ -309,12 +246,15 @@
           const checkboxGroup = document.createElement('div');
           checkboxGroup.classList.add('checkbox-group');
           availableSources.forEach(src => {
+            // Preselect all sources by default.
             const label = document.createElement('label');
-            label.innerHTML = `<input type="checkbox" name="sources" value="${src}"> ${src}`;
+            label.innerHTML = `<input type="checkbox" name="sources" value="${src}" checked> ${src}`;
             checkboxGroup.appendChild(label);
           });
           sourcesList.appendChild(checkboxGroup);
           debug("Loaded sources: " + JSON.stringify(availableSources));
+          // Run fetchAnalytics immediately after sources are loaded.
+          fetchAnalytics();
         }
       })
       .catch(error => {
@@ -322,112 +262,16 @@
       });
     }
 
-    // Fetch analytics based on selected sources.
-    function fetchAnalytics() {
-      const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
-      const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
-      debug("Fetching analytics with selected sources: " + JSON.stringify(selectedSources));
+    // Update the main iframe based on the selected analytics and filters.
+    function updateMainIframe() {
+      const selectedRadio = document.querySelector('input[name="vizRadio"]:checked');
+      if (!selectedRadio) return;
+      const panelPath = selectedRadio.value;
 
-      // Clear previously loaded panels.
-      tilesContainer.innerHTML = "";
-
-      // If no sources are selected, display a message and do not proceed.
-      if (selectedSources.length === 0) {
-        analyticsListTitle.style.display = "block";
-        vizListContainer.innerHTML = "<p style='color: #CCC;'>No sources selected.</p>";
-        return;
-      }
-
-      // Otherwise, fetch analytics from the backend.
-      fetch("/fetch_analytics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sources: selectedSources })
-      })
-      .then(resp => resp.json())
-      .then(data => {
-        const visualizations = data.visualizations || [];
-        if (visualizations.length > 0) {
-          analyticsListTitle.style.display = "block";
-          vizListContainer.innerHTML = "";
-          const vizCheckboxGroup = document.createElement('div');
-          vizCheckboxGroup.classList.add('checkbox-group');
-          visualizations.forEach(viz => {
-            const panelPath = viz.path;
-            const title = viz.title;
-            const label = document.createElement('label');
-            label.innerHTML = `<input type="checkbox" name="vizCheckbox" value="${panelPath}" checked> ${title}`;
-            vizCheckboxGroup.appendChild(label);
-
-            // Load the panel initially.
-            loadPanel(panelPath);
-
-            // Listen for checkbox changes.
-            const checkbox = label.querySelector('input[type="checkbox"]');
-            checkbox.addEventListener('change', e => {
-              if (e.target.checked) {
-                debug("Loading panel: " + panelPath);
-                loadPanel(panelPath);
-              } else {
-                debug("Removing panel: " + panelPath);
-                removePanel(panelPath);
-              }
-            });
-          });
-          vizListContainer.appendChild(vizCheckboxGroup);
-        } else {
-          analyticsListTitle.style.display = "none";
-          vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
-        }
-      })
-      .catch(error => {
-        analyticsListTitle.style.display = "none";
-        vizListContainer.innerHTML = `<p style='color: #CCC;'>Error: ${error}</p>`;
-        debug("Error fetching analytics: " + error);
-        console.error("Error fetching analytics:", error);
-      });
-    }
-
-    // Remove a panel by ID.
-    function removePanel(panelPath) {
-      const panel = document.getElementById('tile-' + panelPath);
-      if (panel) {
-        panel.remove();
-      }
-    }
-
-    // Open and close the fullscreen modal.
-    function openFullscreenModal(src) {
-      const modal = document.getElementById("fullscreenModal");
-      const modalIframe = document.getElementById("modalIframe");
-      modalIframe.src = src;
-      modal.style.display = "block";
-    }
-
-    function closeFullscreenModal() {
-      const modal = document.getElementById("fullscreenModal");
-      modal.style.display = "none";
-      document.getElementById("modalIframe").src = ""; // optional: clear source
-    }
-
-    // Add event listener to the close button.
-    document.getElementById("modalCloseBtn").addEventListener("click", closeFullscreenModal);
-
-    // Optionally, close modal when clicking outside the modal-content.
-    window.addEventListener("click", function(event) {
-      const modal = document.getElementById("fullscreenModal");
-      if (event.target == modal) {
-        closeFullscreenModal();
-      }
-    });
-
-    // Dynamically create a tile panel + iframe.
-    function loadPanel(panelPath) {
       // Get selected sources.
       const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
       const selectedSources = Array.from(sourceCheckboxes).map(cb => encodeURIComponent(cb.value));
       
-      // Get the date range values.
       let queryParams = [];
       if (selectedSources.length) {
         queryParams.push(selectedSources.map(s => 'sources=' + s).join('&'));
@@ -441,52 +285,69 @@
       }
       const query = queryParams.length ? '?' + queryParams.join('&') : '';
 
-      // Use base_url from Flask context
       const baseUrl = "{{ base_url }}";
       const fullPath = baseUrl + panelPath + query;
-      
-      // Prevent duplicate panels.
-      if (document.getElementById('tile-' + panelPath)) return;
-      debug("Loading panel in iframe from: " + fullPath);
-      
-      // Create a container for the panel.
-      const container = document.createElement('div');
-      container.classList.add('panel-container', 'tile-panel');
-      container.id = 'tile-' + panelPath;
-      
-      // Create the share button.
-      const shareBtn = document.createElement('button');
-      shareBtn.classList.add('share-btn');
-      shareBtn.title = "Share";
-      shareBtn.innerHTML = "&#x1F517;"; // Unicode link icon
-      shareBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(fullPath).then(() => {
-          alert("URL copied to clipboard: " + fullPath);
-        }).catch((err) => {
-          console.error("Failed to copy URL: ", err);
-        });
+      document.getElementById('mainIframe').src = fullPath;
+      debug("Main iframe updated to: " + fullPath);
+    }
+
+    // Fetch analytics based on selected sources.
+    function fetchAnalytics() {
+      const sourceCheckboxes = document.querySelectorAll('input[name="sources"]:checked');
+      const selectedSources = Array.from(sourceCheckboxes).map(cb => cb.value);
+      debug("Fetching analytics with selected sources: " + JSON.stringify(selectedSources));
+
+      // Clear any previously loaded analytics options.
+      vizListContainer.innerHTML = "";
+
+      if (selectedSources.length === 0) {
+        analyticsListTitle.style.display = "block";
+        vizListContainer.innerHTML = "<p style='color: #CCC;'>No sources selected.</p>";
+        return;
+      }
+
+      // Fetch analytics from the backend.
+      fetch("/fetch_analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources: selectedSources })
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        const visualizations = data.visualizations || [];
+        if (visualizations.length > 0) {
+          analyticsListTitle.style.display = "block";
+          const vizRadioGroup = document.createElement('div');
+          vizRadioGroup.classList.add('radio-group');
+          visualizations.forEach((viz, index) => {
+            const panelPath = viz.path;
+            const title = viz.title;
+            const label = document.createElement('label');
+            // Preselect the first radio button.
+            label.innerHTML = `<input type="radio" name="vizRadio" value="${panelPath}" ${index === 0 ? 'checked' : ''}> ${title}`;
+            vizRadioGroup.appendChild(label);
+          });
+          vizListContainer.appendChild(vizRadioGroup);
+
+          // Attach event listener to radio buttons.
+          const radioButtons = document.querySelectorAll('input[name="vizRadio"]');
+          radioButtons.forEach(radio => {
+            radio.addEventListener('change', updateMainIframe);
+          });
+
+          // Update main iframe with initial selection.
+          updateMainIframe();
+        } else {
+          analyticsListTitle.style.display = "none";
+          vizListContainer.innerHTML = "<p style='color: #CCC;'>No visualizations found.</p>";
+        }
+      })
+      .catch(error => {
+        analyticsListTitle.style.display = "none";
+        vizListContainer.innerHTML = `<p style='color: #CCC;'>Error: ${error}</p>`;
+        debug("Error fetching analytics: " + error);
+        console.error("Error fetching analytics:", error);
       });
-      container.appendChild(shareBtn);
-      
-      // Create the fullscreen button.
-      const fullscreenBtn = document.createElement('button');
-      fullscreenBtn.classList.add('fullscreen-btn');
-      fullscreenBtn.title = "Fullscreen";
-      fullscreenBtn.innerHTML = "&#x26F6;";
-      fullscreenBtn.addEventListener('click', () => {
-        openFullscreenModal(fullPath);
-      });
-      container.appendChild(fullscreenBtn);
-      
-      // Create the iframe.
-      const iframe = document.createElement('iframe');
-      iframe.src = fullPath;
-      iframe.style.width = "100%";
-      iframe.style.height = "400px"; // Adjust as needed.
-      iframe.style.border = "none";
-      container.appendChild(iframe);
-      
-      tilesContainer.appendChild(container);
     }
 
     // When the date range select changes, show/hide the custom date inputs.
@@ -554,8 +415,7 @@
       return {};
     }
 
-    // Initialize
-    fetchBtn.addEventListener('click', fetchAnalytics);
+    // Initialize the page by loading sources.
     document.addEventListener('DOMContentLoaded', loadSources);
   </script>
 </body>

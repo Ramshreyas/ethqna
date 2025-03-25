@@ -17,13 +17,18 @@
       border-radius: 4px;
       padding: 20px;
       margin: 20px auto;
-      max-width: 800px;
+      max-width: 1200px; /* Increased max-width to better use horizontal space */
     }
     h1 {
       color: #FFD700;
     }
+    /* New container for multi-column layout */
+    .clusters-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
     .cluster {
-      margin-bottom: 20px;
       border: 1px solid #555;
       border-radius: 4px;
       padding: 10px;
@@ -98,35 +103,38 @@
     
     <h2>Thematic Clusters</h2>
     {% if data.clusters %}
-      {% for cluster_label, cluster_data in data.clusters.items() %}
-        <div class="cluster">
-          <h3>{{ cluster_label }} ({{ cluster_data.documents | length }} documents)</h3>
-          <p><strong>Key Takeaways:</strong></p>
-          {% if cluster_data.takeaways and cluster_data.takeaways|length > 0 %}
-            <ul class="takeaways">
-              {% for takeaway in cluster_data.takeaways %}
-                <li>{{ takeaway }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p>No common takeaways available.</p>
-          {% endif %}
-          <button class="accordion">Show Documents</button>
-          <div class="panel-content">
-            <ul>
-              {% for doc_title in cluster_data.documents %}
-                <li>
-                  {% if data.pdf_mapping[doc_title] %}
-                    <a href="/pdf?doc={{ data.pdf_mapping[doc_title] }}" target="_blank">{{ doc_title }}</a>
-                  {% else %}
-                    {{ doc_title }}
-                  {% endif %}
-                </li>
-              {% endfor %}
-            </ul>
+      <!-- Wrap clusters in a container for multi-column layout -->
+      <div class="clusters-container">
+        {% for cluster_label, cluster_data in data.clusters.items() %}
+          <div class="cluster">
+            <h3>{{ cluster_label }} ({{ cluster_data.documents | length }} documents)</h3>
+            <p><strong>Key Takeaways:</strong></p>
+            {% if cluster_data.takeaways and cluster_data.takeaways|length > 0 %}
+              <ul class="takeaways">
+                {% for takeaway in cluster_data.takeaways %}
+                  <li>{{ takeaway }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>No common takeaways available.</p>
+            {% endif %}
+            <button class="accordion">Show Documents</button>
+            <div class="panel-content">
+              <ul>
+                {% for doc_title in cluster_data.documents %}
+                  <li>
+                    {% if data.pdf_mapping[doc_title] %}
+                      <a href="/pdf?doc={{ data.pdf_mapping[doc_title] }}" target="_blank">{{ doc_title }}</a>
+                    {% else %}
+                      {{ doc_title }}
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
           </div>
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
     {% else %}
       <p>No clustering data available.</p>
     {% endif %}
