@@ -197,3 +197,59 @@ def get_document_analysis_data(selected_sources, start_date=None, end_date=None)
     
     return {"clusters": clusters, "pdf_mapping": title_to_pdf}
 
+def get_updates_analysis_data(selected_sources, start_date=None, end_date=None):
+    docs = load_documents()
+    filtered_docs = filter_documents(docs, selected_sources, start_date, end_date)
+    
+    # Build a mapping from document title to its pdf_file.
+    title_to_pdf = {}
+    for doc in filtered_docs:
+        if doc.get("pdf_file") and doc.get("title"):
+            title_to_pdf[doc.get("title")] = doc.get("pdf_file")
+    
+    # Build the input for the Updates analysis.
+    # Use "short_description" if available, otherwise fall back to "description".
+    updates_input = []
+    for doc in filtered_docs:
+        updates_input.append({
+            "title": doc.get("title") or "",
+            "short_description": doc.get("short_description") or doc.get("description") or "",
+            "authors": doc.get("authors") or []
+        })
+    
+    import json
+    documents_json = json.dumps(updates_input, sort_keys=True)
+    
+    import hashlib
+    input_hash = hashlib.md5(documents_json.encode('utf-8')).hexdigest()
+    
+    import os
+    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    cache_file = os.path.join(cache_dir, f"updates_{input_hash}.json")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                posts = json.load(f)
+            return {"posts": posts, "pdf_mapping": title_to_pdf}
+        except Exception as e:
+            print(f"Error reading cache file: {e}")
+    
+    try:
+        llm = LLMService()
+        from LLM.providers.google.prompts import DOCUMENT_UPDATES_PROMPT
+        prompt = DOCUMENT_UPDATES_PROMPT.format(documents_json=documents_json)
+        posts = llm.cluster_documents(documents_json, prompt)
+    except Exception as e:
+        posts = {"error": f"Updates analysis failed: {e}"}
+    
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(posts, f)
+    except Exception as e:
+        print(f"Error writing cache file: {e}")
+    
+    return {"posts": posts, "pdf_mapping": title_to_pdf}
+

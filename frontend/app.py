@@ -422,6 +422,33 @@ def analytics_todo():
                            selected_sources=selected_sources,
                            summary=summary)
 
+@app.route("/analytics/updates")
+def analytics_updates():
+    selected_sources = request.args.getlist("sources")
+    start_date_str = request.args.get("start_date")
+    end_date_str = request.args.get("end_date")
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid start_date: %s", start_date_str)
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+        except Exception as e:
+            app.logger.debug("Invalid end_date: %s", end_date_str)
+    
+    from .analytics import get_updates_analysis_data
+    data = get_updates_analysis_data(selected_sources, start_date, end_date)
+    app.logger.debug("analytics_updates data: %s", data)
+    
+    return render_template("analytics/updates.html",
+                           title="Document Updates",
+                           selected_sources=selected_sources,
+                           data=data)
+
 @app.route('/analytics/<path:filename>')
 def analytics_static(filename):
     print(f"Attempting to serve analytics file: {filename}", flush = True)
@@ -511,3 +538,4 @@ def analytics_document_analysis():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
+

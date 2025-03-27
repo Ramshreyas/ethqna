@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }} 🚀</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #1E1E1E;
+      color: #FFF;
+      margin: 0;
+      padding: 20px;
+    }
+    .post {
+      background-color: #2A2A2A;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 20px auto;
+      max-width: 800px;
+    }
+    .post h2 {
+      color: #FFD700;
+      margin-top: 0;
+    }
+    .post p {
+      line-height: 1.5;
+    }
+    .post .takeaways {
+      margin-top: 10px;
+      padding-left: 20px;
+      list-style: disc;
+      color: #ccc;
+    }
+    .post .relevance {
+      font-style: italic;
+      margin-top: 10px;
+      color: #aaa;
+    }
+    .doc-link {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .doc-link a {
+      display: inline-block;
+      background-color: #444;
+      color: #FFD700;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+    }
+    .doc-link a:hover {
+      background-color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{ title }} 🚀</h1>
+  {% if selected_sources %}
+    <p><strong>Selected Sources:</strong> {{ selected_sources | join(', ') }}</p>
+  {% else %}
+    <p><strong>Selected Sources:</strong> All</p>
+  {% endif %}
+  
+  {% if data.posts %}
+    {% for post in data.posts %}
+      <div class="post">
+        <h2>{{ post.post_title }}</h2>
+        <p>{{ post.description }} 😊</p>
+        <h4>Key Takeaways 💡:</h4>
+        {% if post.takeaways %}
+          <ul class="takeaways">
+            {% for takeaway in post.takeaways %}
+              <li>{{ takeaway }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No key takeaways available.</p>
+        {% endif %}
+        <div class="relevance">
+          🎯 <strong>Relevant to:</strong> {{ post.relevance }}
+        </div>
+        {% set original_title = post.post_title | replace("Conversation with ", "") %}
+        {% if data.pdf_mapping[original_title] is defined %}
+          <div class="doc-link">
+            <a href="/pdf?doc={{ data.pdf_mapping[original_title] }}" target="_blank" title="View Document">
+              🔗 View Full Document: {{ original_title }}
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>No updates available.</p>
+  {% endif %}
+</body>
+</html>

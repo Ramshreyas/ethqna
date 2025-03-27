@@ -144,3 +144,21 @@ two keys:
 
 JSON input: {documents_json} """
 
+DOCUMENT_UPDATES_PROMPT = """
+You are an expert at drafting engaging and well-formatted Discord posts about technical documents in the Ethereum Ecosystem. Given the following JSON array of documents, where each document has the fields "title", "short_description" (or "description" as a fallback), and "authors", generate for each document a Discord post.
+For each document, create a post with:
+- A title in the format "Conversation with [title]". If the document title is missing, use "Conversation" on its own.
+- A short description that summarizes the document.
+- Up to 3 key takeaways that capture important insights from the document.
+- A section explaining who this document is relevant to and why.
+If any details are missing, leave the corresponding section empty.
+Return your answer as a JSON array where each element is an object with the following keys:
+    "post_title": string,
+    "description": string,
+    "takeaways": array of strings,
+    "relevance": string
+JSON input:
+{documents_json}
+"""
+
+
