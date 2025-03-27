@@ -57,6 +57,22 @@
     .doc-link a:hover {
       background-color: #555;
     }
+    .copy-link {
+      text-align: center;
+      margin-top: 10px;
+    }
+    .copy-btn {
+      background-color: #444;
+      color: #FFD700;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .copy-btn:hover {
+      background-color: #555;
+    }
   </style>
 </head>
 <body>
@@ -69,7 +85,15 @@
   
   {% if data.posts %}
     {% for post in data.posts %}
-      <div class="post">
+      {% set original_title = post.post_title | replace("Conversation with ", "") %}
+      <div class="post" 
+           data-post-title="{{ post.post_title }}"
+           data-vibe="{{ post.vibe }}"
+           data-description="{{ post.description }}"
+           data-relevance="{{ post.relevance }}"
+           data-takeaways="{{ post.takeaways | join('||') }}"
+           data-original-title="{{ original_title }}"
+           data-pdf-link="{% if data.pdf_mapping[original_title] is defined %}{{ base_url }}pdf?doc={{ data.pdf_mapping[original_title] }}{% endif %}">
         <h2>{{ post.post_title }}</h2>
         <div class="vibe">Vibe Check: {{ post.vibe }}</div>
         <p>{{ post.description }} 😊</p>
@@ -86,7 +110,6 @@
         <div class="relevance">
           🎯 <strong>Relevant to:</strong> {{ post.relevance }}
         </div>
-        {% set original_title = post.post_title | replace("Conversation with ", "") %}
         {% if data.pdf_mapping[original_title] is defined %}
           <div class="doc-link">
             <a href="/pdf?doc={{ data.pdf_mapping[original_title] }}" target="_blank" title="View Document">
@@ -94,10 +117,64 @@
             </a>
           </div>
         {% endif %}
+        <div class="copy-link">
+          <button class="copy-btn">📋 Copy Update</button>
+        </div>
       </div>
     {% endfor %}
   {% else %}
     <p>No updates available.</p>
   {% endif %}
+  
+  <script>
+    // Function to generate Discord-ready Markdown from post data attributes.
+    function generateMarkdown(postEl) {
+      var title = postEl.getAttribute('data-post-title');
+      var vibe = postEl.getAttribute('data-vibe');
+      var description = postEl.getAttribute('data-description');
+      var relevance = postEl.getAttribute('data-relevance');
+      var takeawaysRaw = postEl.getAttribute('data-takeaways');
+      var originalTitle = postEl.getAttribute('data-original-title');
+      var pdfLink = postEl.getAttribute('data-pdf-link');
+      
+      // Split takeaways using "||" as the delimiter.
+      var takeaways = takeawaysRaw ? takeawaysRaw.split('||') : [];
+      
+      var md = "";
+      md += "**" + title + "**\n";
+      md += "_Vibe Check: " + vibe + "_\n\n";
+      md += description + "\n\n";
+      md += "**Key Takeaways:**\n";
+      if (takeaways.length > 0 && takeaways[0].trim() !== "") {
+        takeaways.forEach(function(item) {
+          md += "- " + item + "\n";
+        });
+      } else {
+        md += "No key takeaways available.\n";
+      }
+      md += "\n";
+      md += "**Relevant to:** " + relevance + "\n\n";
+      if (pdfLink && pdfLink.trim() !== "") {
+        md += "[🔗 View Full Document: " + originalTitle + "](" + pdfLink + ")\n";
+      }
+      return md;
+    }
+    
+    // Attach click event listeners to each "Copy Update" button.
+    document.querySelectorAll('.copy-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var postEl = this.closest('.post');
+        var markdown = generateMarkdown(postEl);
+        navigator.clipboard.writeText(markdown).then(function() {
+          btn.textContent = "Copied!";
+          setTimeout(function() {
+            btn.textContent = "📋 Copy Update";
+          }, 2000);
+        }).catch(function(err) {
+          console.error('Could not copy text: ', err);
+        });
+      });
+    });
+  </script>
 </body>
 </html>
