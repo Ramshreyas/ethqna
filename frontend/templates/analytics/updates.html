@@ -23,6 +23,10 @@
       color: #FFD700;
       margin-top: 0;
     }
+    .vibe {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
     .post p {
       line-height: 1.5;
     }
@@ -67,6 +71,7 @@
     {% for post in data.posts %}
       <div class="post">
         <h2>{{ post.post_title }}</h2>
+        <div class="vibe">Vibe Check: {{ post.vibe }}</div>
         <p>{{ post.description }} 😊</p>
         <h4>Key Takeaways 💡:</h4>
         {% if post.takeaways %}

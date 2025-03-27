@@ -151,14 +151,14 @@ For each document, create a post with:
 - A short description that summarizes the document.
 - Up to 3 key takeaways that capture important insights from the document.
 - A section explaining who this document is relevant to and why.
+- A "Vibe check" represented by a single emoji that best describes the overall feeling or mood of the document.
 If any details are missing, leave the corresponding section empty.
 Return your answer as a JSON array where each element is an object with the following keys:
     "post_title": string,
     "description": string,
     "takeaways": array of strings,
-    "relevance": string
+    "relevance": string,
+    "vibe": string
 JSON input:
 {documents_json}
 """
-
-
