@@ -90,7 +90,6 @@
            data-post-title="{{ post.post_title }}"
            data-vibe="{{ post.vibe }}"
            data-description="{{ post.description }}"
-           data-relevance="{{ post.relevance }}"
            data-takeaways="{{ post.takeaways | join('||') }}"
            data-original-title="{{ original_title }}"
            data-pdf-link="{% if data.pdf_mapping[original_title] is defined %}{{ base_url }}pdf?doc={{ data.pdf_mapping[original_title] }}{% endif %}">
@@ -107,9 +106,6 @@
         {% else %}
           <p>No key takeaways available.</p>
         {% endif %}
-        <div class="relevance">
-          🎯 <strong>Relevant to:</strong> {{ post.relevance }}
-        </div>
         {% if data.pdf_mapping[original_title] is defined %}
           <div class="doc-link">
             <a href="/pdf?doc={{ data.pdf_mapping[original_title] }}" target="_blank" title="View Document">
