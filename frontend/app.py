@@ -233,11 +233,25 @@ def chat():
     print(f"Returning response: {combined_response}", flush=True)
     return jsonify({'response': combined_response, 'page': page_number})
 
-@app.route("/pdf")
-def pdf():
+@app.route("/pdf_file")
+def pdf_file():
     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources')
     pdf_file = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     return send_from_directory(directory, pdf_file)
+
+@app.route("/pdf")
+def pdf():
+    pdf_file_name = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
+    pdf_url = url_for('pdf_file', doc=pdf_file_name)
+    
+    # Determine the absolute path to the PDF file.
+    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', pdf_file_name)
+    
+    # Use the PDF directly for analysis.
+    from .analytics import get_pdf_overall_summary_and_topics
+    analysis = get_pdf_overall_summary_and_topics(pdf_path)
+    
+    return render_template("analytics/pdf_view.html", pdf_url=pdf_url, analysis=analysis)
 
 @app.route("/query/filter_documents", methods=["POST"])
 def filter_documents():

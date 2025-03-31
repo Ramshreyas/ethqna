@@ -162,3 +162,18 @@ Return your answer as a JSON array where each element is an object with the foll
 JSON input:
 {documents_json}
 """
+
+OVERALL_SUMMARY_AND_TOPICS_PROMPT = """
+You are a document analysis expert. Analyze the attached PDF document and provide a concise overall summary and identify the key topics and themes present in the document.
+
+Instructions:
+1. Overall Summary: Write a short, clear narrative that captures the main idea and flow of the document.
+2. Key Topics & Themes: Identify and list the central themes, subjects, or recurring topics that appear in the document.
+
+Return your answer as a JSON object exactly in the following format:
+
+{
+  "overall_summary": "<Your overall summary text>",
+  "key_topics_and_themes": ["<topic 1>", "<topic 2>", ...]
+}
+"""

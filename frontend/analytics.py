@@ -253,3 +253,50 @@ def get_updates_analysis_data(selected_sources, start_date=None, end_date=None):
     
     return {"posts": posts, "pdf_mapping": title_to_pdf}
 
+def get_pdf_overall_summary_and_topics(pdf_path):
+    """
+    Given the path to a PDF file, returns an analysis containing:
+      - overall_summary: A concise narrative capturing the document's main idea and flow.
+      - key_topics_and_themes: A list of central themes and recurring topics.
+    
+    Uses caching based on the PDF file's binary content.
+    """
+    import hashlib, json, os
+    # Compute a hash based on the PDF's binary content.
+    try:
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+    except Exception as e:
+        return {"error": f"Error reading PDF file: {e}"}
+    input_hash = hashlib.md5(pdf_bytes).hexdigest()
+    
+    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    cache_file = os.path.join(cache_dir, f"overall_summary_{input_hash}.json")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                result = json.load(f)
+            return result
+        except Exception as e:
+            print(f"Error reading cache file: {e}")
+    
+    # Use the prompt without any document text injection since we are sending the PDF directly.
+    from LLM.providers.google.prompts import OVERALL_SUMMARY_AND_TOPICS_PROMPT
+    prompt = OVERALL_SUMMARY_AND_TOPICS_PROMPT
+    
+    try:
+        llm = LLMService()
+        result = llm.analyze_pdf(pdf_path, prompt)
+    except Exception as e:
+        result = {"error": f"Error generating overall summary: {e}"}
+    
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(result, f)
+    except Exception as e:
+        print(f"Error writing cache file: {e}")
+    
+    return result

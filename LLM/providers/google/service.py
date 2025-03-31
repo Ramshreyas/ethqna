@@ -150,3 +150,34 @@ class LLMService:
         except Exception as e:
             raise Exception(f"Error parsing cluster documents response: {e}. Raw response: {raw_response}")
         return result
+    
+    def analyze_pdf(self, pdf_path: str, prompt: str) -> dict:
+        """
+        Analyze a PDF file by sending it along with the provided prompt.
+        Returns the response as a JSON object.
+        """
+        import json
+        # Use the internal _process_input to check if the file exists and process it.
+        contents = self._process_input(pdf_path, prompt)
+        # Import the types from google.genai inside the service (hidden from analytics.py)
+        from google.genai import types as genai_types
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=genai_types.GenerateContentConfig(system_instruction=prompt),
+            contents=contents
+        )
+        raw_response = response.text.strip()
+        # Remove code fences if present.
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+        try:
+            result = json.loads(raw_response)
+        except Exception as e:
+            raise Exception(f"Error parsing PDF analysis response: {e}. Raw response: {raw_response}")
+        return result
+

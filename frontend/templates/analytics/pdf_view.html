@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PDF Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #1E1E1E;
+      color: #FFF;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    .left-panel {
+      flex: 1;
+      padding: 20px;
+      background-color: #2A2A2A;
+      overflow-y: auto;
+    }
+    .right-panel {
+      flex: 2;
+      border-left: 1px solid #444;
+      overflow-y: auto;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    h1, h2 {
+      margin: 0 0 10px 0;
+    }
+    p, li {
+      line-height: 1.5;
+    }
+    ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="left-panel">
+      <h1>Document Analysis</h1>
+      <h2>Overall Summary</h2>
+      <p>{{ analysis.overall_summary }}</p>
+      <h2>Key Topics &amp; Themes</h2>
+      {% if analysis.key_topics_and_themes %}
+        <ul>
+          {% for topic in analysis.key_topics_and_themes %}
+            <li>{{ topic }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No topics identified.</p>
+      {% endif %}
+    </div>
+    <div class="right-panel">
+      <iframe src="{{ pdf_url }}" title="PDF Document"></iframe>
+    </div>
+  </div>
+</body>
+</html>
