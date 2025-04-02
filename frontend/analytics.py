@@ -300,3 +300,81 @@ def get_pdf_overall_summary_and_topics(pdf_path):
         print(f"Error writing cache file: {e}")
     
     return result
+
+def get_team_relevance_chunks(overall_summary, key_topics):
+    """
+    Given the overall summary and key topics from a document,
+    run a separate inference pass to generate annotations that map
+    specific document segments (with page numbers and text snippets)
+    to Ethereum Foundation teams, based on the team_topics.json mapping.
+    
+    Returns a JSON object where each key is a team name and its value is an array
+    of annotations with keys "page", "snippet", and "matched_topics".
+    """
+    import json, os, hashlib
+
+    # Load team_topics.json mapping.
+    team_topics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "team_topics.json")
+    try:
+        with open(team_topics_path, "r") as f:
+            team_topics = json.load(f)
+    except Exception as e:
+        print(f"Error loading team_topics.json: {e}")
+        team_topics = {}
+
+    # Build the prompt.
+    from LLM.providers.google.prompts import TEAM_RELEVANCE_CHUNKS_PROMPT
+    prompt = TEAM_RELEVANCE_CHUNKS_PROMPT.format(
+        overall_summary=overall_summary,
+        key_topics=", ".join(key_topics) if key_topics else "",
+        team_topics_json=json.dumps(team_topics, indent=2)
+    )
+
+    # Compute cache hash based on overall_summary and key_topics.
+    cache_key = overall_summary + json.dumps(key_topics, sort_keys=True)
+    input_hash = hashlib.md5(cache_key.encode('utf-8')).hexdigest()
+    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    cache_file = os.path.join(cache_dir, f"team_relevance_chunks_{input_hash}.json")
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                result = json.load(f)
+            return result
+        except Exception as e:
+            print(f"Error reading team relevance cache file: {e}")
+
+    # Call the LLM service.
+    try:
+        from LLM.providers.google.service import LLMService
+        llm = LLMService()
+        # Import types from google.genai inside the service call.
+        from google.genai import types as genai_types
+        contents = [prompt]
+        response = llm.client.models.generate_content(
+            model=llm.model,
+            config=genai_types.GenerateContentConfig(system_instruction=prompt),
+            contents=contents
+        )
+        raw_response = response.text.strip()
+        # Remove any code fences if present.
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+        result = json.loads(raw_response)
+    except Exception as e:
+        result = {"error": f"Error generating team relevance analysis: {e}"}
+
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(result, f)
+    except Exception as e:
+        print(f"Error writing team relevance cache file: {e}")
+
+    return result

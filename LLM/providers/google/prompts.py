@@ -177,3 +177,35 @@ Return your answer as a JSON object exactly in the following format:
   "key_topics_and_themes": ["<topic 1>", "<topic 2>", ...]
 }
 """
+
+TEAM_RELEVANCE_PROMPT = """
+You are an expert at determining team relevance within the Ethereum Foundation. You are given a document analysis and a mapping of Ethereum Foundation teams to the topics they care about.
+
+Document Analysis:
+Overall Summary: {overall_summary}
+Key Topics & Themes: {key_topics}
+
+Team Topics Mapping:
+{team_topics_json}
+
+Based on the above, identify which Ethereum Foundation teams would find this document most relevant. For each team, list the specific topics from the document analysis that match the topics they care about. Return your answer as a JSON object where each key is a team name and its value is a list of matched topics.
+"""
+
+TEAM_RELEVANCE_CHUNKS_PROMPT = """
+You are an expert in analyzing document content and linking it to relevant Ethereum Foundation teams. You are given:
+Overall Summary: {overall_summary}
+Key Topics & Themes: {key_topics}
+
+Team Topics Mapping:
+{team_topics_json}
+
+For each Ethereum Foundation team that is relevant, identify specific segments of the document that illustrate that relevance. For each segment, provide:
+- The page number where the segment occurs.
+- A short snippet (no more than 200 characters) from that page that captures the relevant content.
+- The matched topics from the document that triggered this relevance.
+
+Return your answer as a JSON object where each key is a team name and its value is an array of objects with the following keys:
+  "page": <page number as an integer>,
+  "snippet": "<short snippet of the document text>",
+  "matched_topics": ["<topic 1>", "<topic 2>", ...]
+"""

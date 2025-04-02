@@ -14,12 +14,15 @@
     .container {
       display: flex;
       height: 100vh;
+      flex-wrap: nowrap;
     }
     .left-panel {
       flex: 1;
       padding: 20px;
       background-color: #2A2A2A;
       overflow-y: auto;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     .right-panel {
       flex: 2;
@@ -31,7 +34,7 @@
       height: 100%;
       border: none;
     }
-    h1, h2 {
+    h1, h2, h3 {
       margin: 0 0 10px 0;
     }
     p, li {
@@ -39,6 +42,22 @@
     }
     ul {
       padding-left: 20px;
+    }
+    .team-annotations {
+      margin-top: 20px;
+      border-top: 1px solid #555;
+      padding-top: 10px;
+    }
+    .annotation {
+      cursor: pointer;
+      padding: 5px;
+      border: 1px solid #444;
+      margin-bottom: 5px;
+      border-radius: 3px;
+      background-color: #333;
+    }
+    .annotation:hover {
+      background-color: #444;
     }
   </style>
 </head>
@@ -48,6 +67,7 @@
       <h1>Document Analysis</h1>
       <h2>Overall Summary</h2>
       <p>{{ analysis.overall_summary }}</p>
+      
       <h2>Key Topics &amp; Themes</h2>
       {% if analysis.key_topics_and_themes %}
         <ul>
@@ -58,10 +78,42 @@
       {% else %}
         <p>No topics identified.</p>
       {% endif %}
+      
+      <div class="team-annotations">
+        <h2>Team Relevance Annotations</h2>
+        {% if analysis.team_relevance_chunks and analysis.team_relevance_chunks != {} %}
+          {% for team, annotations in analysis.team_relevance_chunks.items() %}
+            <h3>{{ team }}</h3>
+            {% for ann in annotations %}
+              <div class="annotation" data-page="{{ ann.page }}">
+                <strong>Page {{ ann.page }}:</strong> {{ ann.snippet }}<br>
+                <em>Matched Topics:</em> {{ ann.matched_topics | join(', ') }}
+              </div>
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          <p>No team relevance annotations available.</p>
+        {% endif %}
+      </div>
     </div>
     <div class="right-panel">
-      <iframe src="{{ pdf_url }}" title="PDF Document"></iframe>
+      <iframe id="pdfFrame" src="{{ pdf_url }}" title="PDF Document"></iframe>
     </div>
   </div>
+  
+  <script>
+    // When an annotation is clicked, update the iframe to jump to the corresponding page.
+    // This assumes that appending "#page=<number>" to the pdf_url will navigate to that page.
+    document.querySelectorAll('.annotation').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var page = el.getAttribute('data-page');
+        var iframe = document.getElementById('pdfFrame');
+        // Update the iframe src with a fragment specifying the page.
+        // Note: This approach works if the PDF viewer supports page fragments.
+        var baseUrl = "{{ pdf_url }}";
+        iframe.src = baseUrl + "#page=" + page;
+      });
+    });
+  </script>
 </body>
 </html>

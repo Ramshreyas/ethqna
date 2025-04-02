@@ -244,12 +244,17 @@ def pdf():
     pdf_file_name = request.args.get('doc', '41dd8407-7914-4978-a078-8dc597d8fb86.pdf')
     pdf_url = url_for('pdf_file', doc=pdf_file_name)
     
-    # Determine the absolute path to the PDF file.
     pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', pdf_file_name)
     
-    # Use the PDF directly for analysis.
-    from .analytics import get_pdf_overall_summary_and_topics
+    from .analytics import get_pdf_overall_summary_and_topics, get_team_relevance_chunks
     analysis = get_pdf_overall_summary_and_topics(pdf_path)
+    
+    if "error" not in analysis and "overall_summary" in analysis and "key_topics_and_themes" in analysis:
+        team_relevance_chunks = get_team_relevance_chunks(analysis["overall_summary"], analysis["key_topics_and_themes"])
+    else:
+        team_relevance_chunks = {}
+    
+    analysis["team_relevance_chunks"] = team_relevance_chunks
     
     return render_template("analytics/pdf_view.html", pdf_url=pdf_url, analysis=analysis)
 
