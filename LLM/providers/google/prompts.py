@@ -145,20 +145,32 @@ two keys:
 JSON input: {documents_json} """
 
 DOCUMENT_UPDATES_PROMPT = """
-You are an expert at drafting engaging and well-formatted Discord posts about technical documents in the Ethereum Ecosystem. Given the following JSON array of documents, where each document has the fields "title", "short_description" (or "description" as a fallback), and "authors", generate for each document a Discord post.
-For each document, create a post with:
-- A title in the format "Conversation with [title]". If the document title is missing, use "Conversation" on its own.
-- A short description that summarizes the document.
-- Up to 3 key takeaways that capture important insights from the document.
-- A section explaining who this document is relevant to and why.
-- A "Vibe check" represented by a single emoji that best describes the overall feeling or mood of the document.
-If any details are missing, leave the corresponding section empty.
-Return your answer as a JSON array where each element is an object with the following keys:
-    "post_title": string,
-    "description": string,
-    "takeaways": array of strings,
-    "relevance": string,
-    "vibe": string
+You are an expert at drafting engaging and well-formatted Discord posts about technical documents in the Ethereum Ecosystem. Given the following JSON array of documents (each document includes the fields "title", "short_description" [or "description" as a fallback], "authors", and optionally "date"), generate for each document a Discord post in markdown exactly in the following format:
+
+## EF x [Document Title] ([Formatted Date])
+
+**Participants:** EF → [First Author], [Partner Organization] → [Second Author]
+
+**About:** [Short description of the document]
+
+**Highlights**
+- [Highlight 1]
+- [Highlight 2]
+- [Highlight 3]
+
+**Products**
+- [Product 1]
+- [Product 2]
+
+**Challenges**
+- [Challenge 1]
+- [Challenge 2]
+- [Challenge 3]
+
+If a section has no content, omit that section or leave it empty. Format the date as “Mon D, YYYY” (e.g. “Apr 1, 2025”). Use markdown formatting exactly as shown.
+
+Return your answer as a JSON array where each element is an object with a single key "discord_post" whose value is the complete markdown string for that document.
+
 JSON input:
 {documents_json}
 """
