@@ -209,3 +209,35 @@ Return your answer as a JSON object where each key is a team name and its value 
   "snippet": "<short snippet of the document text>",
   "matched_topics": ["<topic 1>", "<topic 2>", ...]
 """
+
+TOPIC_FLOW_PROMPT = """
+You are an expert in document analysis. Your task is to segment the attached PDF document into a sequential topic flow.
+Please divide the document into a series of semantic chunks based on the topics being discussed. For each chunk, provide:
+- The page number where the chunk starts (as an integer).
+- A concise title summarizing the topic of that chunk.
+- A short snippet (up to 200 characters) that captures the essence of the chunk.
+Return your answer as a JSON array of objects, each with the keys:
+  "page", "title", "snippet".
+Ensure that the segments cover the document in sequence from beginning to end.
+"""
+
+TEAM_RELEVANCE_FOR_CHUNKS_PROMPT = """
+You are an expert in linking document content to relevant Ethereum Foundation teams and assessing the urgency of the content.
+You are given:
+1. A list of document chunks. Each chunk is an object with the following fields:
+   - Page: The starting page number of the chunk.
+   - Title: A concise title summarizing the topic of the chunk.
+   - Snippet: A short excerpt (up to 200 characters) that captures the essence of the chunk.
+2. A mapping of Ethereum Foundation teams to the topics they care about, provided as JSON:
+{team_topics_json}
+
+For each chunk, determine:
+   - The "matched_team": the Ethereum Foundation team most directly relevant to the chunk based on the provided mapping, or "none" if no team is directly relevant.
+   - The "matched_topics": a list of topics from the mapping that are present in the chunk (or an empty list if none).
+   - The "escalation_level": an integer from 1 to 5, where 5 indicates highly urgent, emotionally charged, or action-oriented content, and 1 indicates general discussion with minimal urgency.
+
+Return your answer as a JSON array of objects (one per chunk) with the following keys:
+   "page", "matched_team", "matched_topics", "escalation_level".
+
+Sort the array in ascending order by page number.
+"""

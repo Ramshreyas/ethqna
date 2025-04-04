@@ -43,12 +43,12 @@
     ul {
       padding-left: 20px;
     }
-    .team-annotations {
+    .topic-flow {
       margin-top: 20px;
       border-top: 1px solid #555;
       padding-top: 10px;
     }
-    .annotation {
+    .topic-item {
       cursor: pointer;
       padding: 5px;
       border: 1px solid #444;
@@ -56,7 +56,7 @@
       border-radius: 3px;
       background-color: #333;
     }
-    .annotation:hover {
+    .topic-item:hover {
       background-color: #444;
     }
   </style>
@@ -79,20 +79,28 @@
         <p>No topics identified.</p>
       {% endif %}
       
-      <div class="team-annotations">
-        <h2>Team Relevance Annotations</h2>
-        {% if analysis.team_relevance_chunks and analysis.team_relevance_chunks != {} %}
-          {% for team, annotations in analysis.team_relevance_chunks.items() %}
-            <h3>{{ team }}</h3>
-            {% for ann in annotations %}
-              <div class="annotation" data-page="{{ ann.page }}">
-                <strong>Page {{ ann.page }}:</strong> {{ ann.snippet }}<br>
-                <em>Matched Topics:</em> {{ ann.matched_topics | join(', ') }}
-              </div>
-            {% endfor %}
+      <div class="topic-flow">
+        <h2>Topic Flow</h2>
+        {% if analysis.topic_flow and analysis.topic_flow|length > 0 %}
+          {% for i in range(analysis.topic_flow|length) %}
+            {% set chunk = analysis.topic_flow[i] %}
+            {% set annotation = analysis.chunk_annotations[i] if analysis.chunk_annotations|length > i else {} %}
+            <div class="topic-item" data-page="{{ chunk.page }}">
+              {% if annotation and annotation.escalation_level is defined and annotation.escalation_level >= 3 %}
+                <strong style="color: red;">Page {{ chunk.page }}: {{ chunk.title }}</strong><br>
+              {% else %}
+                <strong>Page {{ chunk.page }}: {{ chunk.title }}</strong><br>
+              {% endif %}
+              <small>{{ chunk.snippet }}</small><br>
+              {% if annotation and annotation.matched_team is defined %}
+                <em>Matched Team:</em> {{ annotation.matched_team }}<br>
+                <em>Matched Topics:</em> {{ annotation.matched_topics | join(', ') if annotation.matched_topics|length > 0 else "none" }}<br>
+                <em>Escalation Level:</em> {{ annotation.escalation_level }}
+              {% endif %}
+            </div>
           {% endfor %}
         {% else %}
-          <p>No team relevance annotations available.</p>
+          <p>No topic flow annotations available.</p>
         {% endif %}
       </div>
     </div>
@@ -102,14 +110,11 @@
   </div>
   
   <script>
-    // When an annotation is clicked, update the iframe to jump to the corresponding page.
-    // This assumes that appending "#page=<number>" to the pdf_url will navigate to that page.
-    document.querySelectorAll('.annotation').forEach(function(el) {
+    // When a topic item is clicked, update the iframe to jump to the corresponding page.
+    document.querySelectorAll('.topic-item').forEach(function(el) {
       el.addEventListener('click', function() {
         var page = el.getAttribute('data-page');
         var iframe = document.getElementById('pdfFrame');
-        // Update the iframe src with a fragment specifying the page.
-        // Note: This approach works if the PDF viewer supports page fragments.
         var baseUrl = "{{ pdf_url }}";
         iframe.src = baseUrl + "#page=" + page;
       });

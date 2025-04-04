@@ -378,3 +378,131 @@ def get_team_relevance_chunks(overall_summary, key_topics):
         print(f"Error writing team relevance cache file: {e}")
 
     return result
+
+def get_topic_flow(pdf_path):
+    """
+    Given the path to a PDF file, returns a topic flow list.
+    The LLM will segment the document into semantic chunks, each with:
+      - page: the starting page number of the chunk
+      - title: a concise title describing the topic of the chunk
+      - snippet: a short snippet summarizing the chunk (up to 200 characters)
+      
+    Returns a JSON array of these objects.
+    """
+    import hashlib, json, os
+    try:
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+    except Exception as e:
+        return {"error": f"Error reading PDF file: {e}"}
+    input_hash = hashlib.md5(pdf_bytes).hexdigest()
+    
+    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    cache_file = os.path.join(cache_dir, f"topic_flow_{input_hash}.json")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                topic_flow = json.load(f)
+            return topic_flow
+        except Exception as e:
+            print(f"Error reading topic flow cache file: {e}")
+    
+    from LLM.providers.google.prompts import TOPIC_FLOW_PROMPT
+    prompt = TOPIC_FLOW_PROMPT
+    
+    try:
+        from LLM.providers.google.service import LLMService
+        llm = LLMService()
+        # This will trigger the _process_input in LLMService, which detects that pdf_path is a file.
+        # All Google-specific details remain encapsulated in LLMService.
+        topic_flow = llm.analyze_pdf(pdf_path, prompt)
+    except Exception as e:
+        topic_flow = {"error": f"Error generating topic flow: {e}"}
+    
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(topic_flow, f)
+    except Exception as e:
+        print(f"Error writing topic flow cache file: {e}")
+    
+    return topic_flow
+
+def annotate_topic_flow_chunks(topic_flow_chunks):
+    """
+    Given a list of topic flow chunks (each with "page", "title", and "snippet"),
+    perform an inference pass to generate, for each chunk:
+      - matched_team: The relevant Ethereum Foundation team based on the team mapping, or "none"
+      - matched_topics: A list of topics from the mapping that are present in the chunk (or an empty list)
+      - escalation_level: An integer from 1 to 5 (5 = highly urgent/emotional/action-oriented)
+    
+    Returns a JSON array of objects, one per chunk, with the keys:
+      "page", "matched_team", "matched_topics", "escalation_level".
+    """
+    import json, os, hashlib
+
+    # Load the team topics mapping.
+    team_topics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "team_topics.json")
+    try:
+        with open(team_topics_path, "r") as f:
+            team_topics = json.load(f)
+    except Exception as e:
+        print(f"Error loading team_topics.json: {e}")
+        team_topics = {}
+
+    # Build the prompt by inserting the team topics mapping.
+    from LLM.providers.google.prompts import TEAM_RELEVANCE_FOR_CHUNKS_PROMPT
+    prompt = TEAM_RELEVANCE_FOR_CHUNKS_PROMPT.format(
+        team_topics_json=json.dumps(team_topics, indent=2)
+    )
+    # Append the JSON of the topic flow chunks to the prompt for context.
+    topic_flow_json = json.dumps(topic_flow_chunks, sort_keys=True)
+    full_prompt = prompt + "\n\n" + topic_flow_json
+
+    # Compute a cache hash based on the topic flow chunks.
+    input_hash = hashlib.md5(topic_flow_json.encode('utf-8')).hexdigest()
+    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    cache_file = os.path.join(cache_dir, f"team_relevance_chunks_{input_hash}.json")
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                annotations = json.load(f)
+            return annotations
+        except Exception as e:
+            print(f"Error reading team relevance chunks cache file: {e}")
+
+    # Call the LLM service.
+    try:
+        from LLM.providers.google.service import LLMService
+        llm = LLMService()
+        from google.genai import types as genai_types
+        contents = [full_prompt]
+        response = llm.client.models.generate_content(
+            model=llm.model,
+            config=genai_types.GenerateContentConfig(system_instruction=full_prompt),
+            contents=contents
+        )
+        raw_response = response.text.strip()
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+        annotations = json.loads(raw_response)
+    except Exception as e:
+        annotations = {"error": f"Error generating team relevance for chunks: {e}"}
+
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(annotations, f)
+    except Exception as e:
+        print(f"Error writing team relevance chunks cache file: {e}")
+
+    return annotations

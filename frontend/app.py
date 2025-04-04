@@ -246,15 +246,17 @@ def pdf():
     
     pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', pdf_file_name)
     
-    from .analytics import get_pdf_overall_summary_and_topics, get_team_relevance_chunks
+    from .analytics import get_pdf_overall_summary_and_topics, get_topic_flow, annotate_topic_flow_chunks
     analysis = get_pdf_overall_summary_and_topics(pdf_path)
+    topic_flow = get_topic_flow(pdf_path)
+    analysis["topic_flow"] = topic_flow
     
-    if "error" not in analysis and "overall_summary" in analysis and "key_topics_and_themes" in analysis:
-        team_relevance_chunks = get_team_relevance_chunks(analysis["overall_summary"], analysis["key_topics_and_themes"])
+    if "error" not in analysis and "topic_flow" in analysis:
+        chunk_annotations = annotate_topic_flow_chunks(topic_flow)
     else:
-        team_relevance_chunks = {}
+        chunk_annotations = {}
     
-    analysis["team_relevance_chunks"] = team_relevance_chunks
+    analysis["chunk_annotations"] = chunk_annotations
     
     return render_template("analytics/pdf_view.html", pdf_url=pdf_url, analysis=analysis)
 
