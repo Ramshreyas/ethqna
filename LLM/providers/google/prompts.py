@@ -149,7 +149,7 @@ You are an expert at drafting engaging and well-formatted Discord posts about te
 
 ## EF x [Document Title] ([Formatted Date])
 
-**Participants:** EF → [First Author], [Partner Organization] → [Second Author]
+**Participants:** EF → [Author from the Ethereum Foundation], [Partner Organization] → [Author from the other organisation]
 
 **About:** [Short description of the document]
 
