@@ -59,6 +59,15 @@
     .topic-item:hover {
       background-color: #444;
     }
+
+    /* Style snippet links */
+    a.snippet-link {
+      color: #ffffff;      /* White text */
+      text-decoration: none; 
+    }
+    a.snippet-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -84,13 +93,17 @@
         {% if analysis.snippets and analysis.snippets|length > 0 %}
           <ul>
             {% for snippet in analysis.snippets %}
-              <li>{{ snippet.action }}</li>
+              <li>
+                <a href="#" class="snippet-link" data-page="{{ snippet.page }}">
+                  Page {{ snippet.page }}: {{ snippet.action }}
+                </a>
+              </li>
             {% endfor %}
           </ul>
         {% else %}
           <p>No negative emotion snippets found.</p>
         {% endif %}
-      </div>      
+      </div>          
     </div>
     <div class="right-panel">
       <iframe id="pdfFrame" src="{{ pdf_url }}" title="PDF Document"></iframe>
@@ -98,15 +111,16 @@
   </div>
   
   <script>
-    // When a topic item is clicked, update the iframe to jump to the corresponding page.
-    document.querySelectorAll('.topic-item').forEach(function(el) {
-      el.addEventListener('click', function() {
+    // When a snippet link is clicked, update the PDF iframe to jump to the corresponding page.
+    document.querySelectorAll('.snippet-link').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.preventDefault();
         var page = el.getAttribute('data-page');
         var iframe = document.getElementById('pdfFrame');
         var baseUrl = "{{ pdf_url }}";
         iframe.src = baseUrl + "#page=" + page;
       });
     });
-  </script>
+  </script>  
 </body>
 </html>

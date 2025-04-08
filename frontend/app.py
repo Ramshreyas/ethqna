@@ -249,12 +249,44 @@ def pdf():
     from .analytics import get_pdf_overall_summary_and_topics
     analysis = get_pdf_overall_summary_and_topics(pdf_path)
     
-    # Remove topic flow and chunk annotations; add a placeholder for the snippets finder output.
+    # Remove old topic flow and chunk annotations if they exist.
     analysis.pop("topic_flow", None)
     analysis.pop("chunk_annotations", None)
-    analysis["snippets"] = []  # This will later hold negative emotion snippets.
+    
+    # Load team_topics.json (required by the prompt)
+    import json  # Only importing json here; os is already imported globally.
+    team_topics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'team_topics.json')
+    try:
+        with open(team_topics_path, "r") as f:
+            team_topics = json.load(f)
+        team_topics_json = json.dumps(team_topics, indent=2)
+    except Exception as e:
+        print(f"Error loading team_topics.json: {e}")
+        team_topics_json = "{}"
+    
+    # Build the negative emotion prompt using the repurposed TEAM_ACTION_POINTS_PROMPT.
+    from LLM.providers.google.prompts import TEAM_ACTION_POINTS_PROMPT
+    prompt = TEAM_ACTION_POINTS_PROMPT.format(
+        document_title=analysis.get("title", "Untitled Document"),
+        team_topics_json=team_topics_json
+    )
+    
+    # Call the LLMService to extract negative emotion snippets.
+    from LLM.providers.google.service import LLMService
+    llm = LLMService()
+    try:
+        snippets_response = llm.generate_action_points(pdf_path, prompt)
+    except Exception as e:
+        snippets_response = {"error": f"Negative emotion snippet extraction failed: {e}"}
+    
+    # Use the returned "action_points" as our snippets.
+    if "action_points" in snippets_response:
+        analysis["snippets"] = snippets_response["action_points"]
+    else:
+        analysis["snippets"] = [{"team": "Negative Emotion", "action": "No relevant actions or teams found"}]
     
     return render_template("analytics/pdf_view.html", pdf_url=pdf_url, analysis=analysis)
+
 
 @app.route("/query/filter_documents", methods=["POST"])
 def filter_documents():

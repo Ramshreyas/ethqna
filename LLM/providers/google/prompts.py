@@ -260,11 +260,12 @@ You will be given two documents:
 2. A PDF document containing technical details and context about a technical topic in the Ethereum Ecosystem. The title of the document is: {document_title}
 
 Your task is as follows:
-- Read the PDF document thoroughly.
-- Instead of identifying actionable recommendations, scan the document for any snippets of text that clearly express a negative emotion such as disappointment, confusion, anger, or regret.
-- For every snippet that exhibits any of these negative emotions, return an entry using the same JSON structure as for action points.
-- For each identified snippet, set the "team" field to "Negative Emotion" and the "action" field to the exact snippet from the document.
-- If no such snippets are found, return a single entry with the "team" field set to "Negative Emotion" and the "action" field set to "No relevant actions or teams found".
+- Read the PDF document thoroughly from the first page to the last.
+- Scan the entire document for any snippets of text that clearly express a negative emotion such as disappointment, confusion, anger, or regret.
+- Ensure you identify and return all instances of negative emotion throughout the document, regardless of where they appear.
+- For every snippet that exhibits any of these negative emotions, return an entry using the JSON structure shown below.
+- For each identified snippet, set the "team" field to "Negative Emotion", the "action" field to the exact snippet of text that shows negative emotion, and add a "page" field indicating the page number where the snippet was found.
+- If no such snippets are found, return a single entry with the "team" field set to "Negative Emotion", the "action" field set to "No relevant actions or teams found", and "page" set to 0.
 
 Return your answer as a JSON object with the following structure:
 
@@ -272,8 +273,9 @@ Return your answer as a JSON object with the following structure:
     "title": "<Document Title>",
     "action_points": [
          {{
-            "team": "<For each snippet, use 'Negative Emotion'>",
-            "action": "<The snippet of text that shows negative emotion>"
+            "team": "Negative Emotion",
+            "action": "<The snippet of text that shows negative emotion>",
+            "page": <Page number as an integer>
          }},
          ...
     ]
