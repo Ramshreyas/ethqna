@@ -212,6 +212,7 @@ def get_updates_analysis_data(selected_sources, start_date=None, end_date=None):
     updates_input = []
     for doc in filtered_docs:
         updates_input.append({
+            "id": doc.get("id") or "",
             "title": doc.get("title") or "",
             "short_description": doc.get("short_description") or doc.get("description") or "",
             "authors": doc.get("authors") or []
@@ -506,3 +507,87 @@ def annotate_topic_flow_chunks(topic_flow_chunks):
         print(f"Error writing team relevance chunks cache file: {e}")
 
     return annotations
+
+def get_action_points_analysis_data(selected_sources, start_date=None, end_date=None):
+    """
+    Processes each filtered document individually. For each document, retrieves its PDF
+    from data/pdf_sources, then calls the dedicated LLMService.generate_action_points method
+    with a prompt containing the document title and the team mapping.
+    
+    Returns a dictionary mapping each document's unique id to its list of formatted action points.
+    """
+    docs = load_documents()
+    filtered_docs = filter_documents(docs, selected_sources, start_date, end_date)
+    
+    import json, os
+    
+    # Load team topics mapping from data/team_topics.json.
+    team_topics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "team_topics.json")
+    try:
+        with open(team_topics_path, "r") as f:
+            team_topics = json.load(f)
+        team_topics_json = json.dumps(team_topics, indent=2)
+    except Exception as e:
+        print(f"Error loading team_topics.json: {e}")
+        team_topics_json = "{}"
+    
+    action_points_mapping = {}
+    
+    from LLM.providers.google.service import LLMService
+    llm = LLMService()
+    from LLM.providers.google.prompts import TEAM_ACTION_POINTS_PROMPT
+    
+    for doc in filtered_docs:
+        # Use the unique document id as the reference key.
+        doc_id = doc.get("id")
+        title = doc.get("title") or "Untitled"
+        pdf_file = doc.get("pdf_file")
+        
+        # Build the full path to the actual PDF file.
+        pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "pdf_sources", pdf_file)
+        
+        # Set up caching: use the doc_id for the cache filename.
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "analytics")
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+        cache_file = os.path.join(cache_dir, f"action_points_{doc_id}.json")
+        
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r") as f:
+                    action_points = json.load(f)
+            except Exception as e:
+                print(f"Error reading cache file for document id '{doc_id}': {e}")
+                action_points = {"error": f"Cache read error: {e}"}
+        else:
+            # Build the prompt using the updated TEAM_ACTION_POINTS_PROMPT.
+            prompt = TEAM_ACTION_POINTS_PROMPT.format(
+                document_title=title,
+                team_topics_json=team_topics_json
+            )
+            try:
+                # Call the dedicated action points generator, sending the actual PDF path.
+                action_points = llm.generate_action_points(pdf_path, prompt)
+            except Exception as e:
+                action_points = {"error": f"Action points inference failed: {e}"}
+            try:
+                with open(cache_file, "w") as f:
+                    json.dump(action_points, f)
+            except Exception as e:
+                print(f"Error writing cache file for document id '{doc_id}': {e}")
+        
+        # If the returned response lacks a proper 'action_points' key, use a fallback message.
+        if not action_points.get("action_points"):
+            action_points_mapping[doc_id] = ["No relevant actions or teams found"]
+        else:
+            formatted_points = []
+            for item in action_points["action_points"]:
+                team = item.get("team", "").strip()
+                action_text = item.get("action", "").strip()
+                if team:
+                    formatted_points.append(f"{team}: {action_text}")
+                else:
+                    formatted_points.append(action_text)
+            action_points_mapping[doc_id] = formatted_points
+    
+    return action_points_mapping

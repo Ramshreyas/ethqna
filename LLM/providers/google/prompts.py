@@ -145,7 +145,7 @@ two keys:
 JSON input: {documents_json} """
 
 DOCUMENT_UPDATES_PROMPT = """
-You are an expert at drafting engaging and well-formatted Discord posts about technical documents in the Ethereum Ecosystem. Given the following JSON array of documents (each document includes the fields "title", "short_description" [or "description" as a fallback], "authors", and optionally "date"), generate for each document a Discord post in markdown exactly in the following format:
+You are an expert at drafting engaging and well-formatted Discord posts about technical documents in the Ethereum Ecosystem. Given the following JSON array of documents (each document includes the fields "id", "title", "short_description" [or "description" as a fallback], "authors", and optionally "date"), generate for each document a Discord post in markdown exactly in the following format:
 
 ## EF x [Document Title] ([Formatted Date])
 
@@ -169,7 +169,7 @@ You are an expert at drafting engaging and well-formatted Discord posts about te
 
 If a section has no content, omit that section or leave it empty. Format the date as “Mon D, YYYY” (e.g. “Apr 1, 2025”). Use markdown formatting exactly as shown.
 
-Return your answer as a JSON array where each element is an object with a single key "discord_post" whose value is the complete markdown string for that document.
+Return your answer as a JSON array where each element is an object with the keys "id" and "discord_post", where "id" is the document id and "discord_post" is the complete markdown string for that document.
 
 JSON input:
 {documents_json}
@@ -252,4 +252,33 @@ Return your answer as a JSON array of objects (one per chunk) with the following
    "page", "matched_team", "matched_topics", "escalation_level".
 
 Sort the array in ascending order by page number.
+"""
+
+TEAM_ACTION_POINTS_PROMPT = """
+You will be given two documents:
+1. A JSON mapping of Ethereum Teams to the topics they focus on.
+2. A PDF document containing technical details and context about a technical topic in the Ethereum Ecosystem. The title of the document is: {document_title}
+
+Your task is as follows:
+- Read the PDF document thoroughly.
+- Instead of identifying actionable recommendations, scan the document for any snippets of text that clearly express a negative emotion such as disappointment, confusion, anger, or regret.
+- For every snippet that exhibits any of these negative emotions, return an entry using the same JSON structure as for action points.
+- For each identified snippet, set the "team" field to "Negative Emotion" and the "action" field to the exact snippet from the document.
+- If no such snippets are found, return a single entry with the "team" field set to "Negative Emotion" and the "action" field set to "No relevant actions or teams found".
+
+Return your answer as a JSON object with the following structure:
+
+{{
+    "title": "<Document Title>",
+    "action_points": [
+         {{
+            "team": "<For each snippet, use 'Negative Emotion'>",
+            "action": "<The snippet of text that shows negative emotion>"
+         }},
+         ...
+    ]
+}}
+
+Team Topics Mapping:
+{team_topics_json}
 """

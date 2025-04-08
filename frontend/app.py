@@ -246,17 +246,13 @@ def pdf():
     
     pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'pdf_sources', pdf_file_name)
     
-    from .analytics import get_pdf_overall_summary_and_topics, get_topic_flow, annotate_topic_flow_chunks
+    from .analytics import get_pdf_overall_summary_and_topics
     analysis = get_pdf_overall_summary_and_topics(pdf_path)
-    topic_flow = get_topic_flow(pdf_path)
-    analysis["topic_flow"] = topic_flow
     
-    if "error" not in analysis and "topic_flow" in analysis:
-        chunk_annotations = annotate_topic_flow_chunks(topic_flow)
-    else:
-        chunk_annotations = {}
-    
-    analysis["chunk_annotations"] = chunk_annotations
+    # Remove topic flow and chunk annotations; add a placeholder for the snippets finder output.
+    analysis.pop("topic_flow", None)
+    analysis.pop("chunk_annotations", None)
+    analysis["snippets"] = []  # This will later hold negative emotion snippets.
     
     return render_template("analytics/pdf_view.html", pdf_url=pdf_url, analysis=analysis)
 
@@ -448,8 +444,8 @@ def analytics_updates():
     selected_sources = request.args.getlist("sources")
     start_date_str = request.args.get("start_date")
     end_date_str = request.args.get("end_date")
-    start_date = None
-    end_date = None
+    start_date, end_date = None, None
+
     if start_date_str:
         try:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
@@ -460,15 +456,14 @@ def analytics_updates():
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
         except Exception as e:
             app.logger.debug("Invalid end_date: %s", end_date_str)
-    
+
     from .analytics import get_updates_analysis_data
     data = get_updates_analysis_data(selected_sources, start_date, end_date)
-    app.logger.debug("analytics_updates data: %s", data)
-    
+
     return render_template("analytics/updates.html",
-                           title="Document Updates",
-                           selected_sources=selected_sources,
-                           data=data)
+                        title="Document Updates",
+                        selected_sources=selected_sources,
+                        data=data)
 
 @app.route('/analytics/<path:filename>')
 def analytics_static(filename):

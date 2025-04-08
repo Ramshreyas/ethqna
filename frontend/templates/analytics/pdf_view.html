@@ -79,30 +79,18 @@
         <p>No topics identified.</p>
       {% endif %}
       
-      <div class="topic-flow">
-        <h2>Topic Flow</h2>
-        {% if analysis.topic_flow and analysis.topic_flow|length > 0 %}
-          {% for i in range(analysis.topic_flow|length) %}
-            {% set chunk = analysis.topic_flow[i] %}
-            {% set annotation = analysis.chunk_annotations[i] if analysis.chunk_annotations|length > i else {} %}
-            <div class="topic-item" data-page="{{ chunk.page }}">
-              {% if annotation and annotation.escalation_level is defined and annotation.escalation_level >= 3 %}
-                <strong style="color: red;">Page {{ chunk.page }}: {{ chunk.title }}</strong><br>
-              {% else %}
-                <strong>Page {{ chunk.page }}: {{ chunk.title }}</strong><br>
-              {% endif %}
-              <small>{{ chunk.snippet }}</small><br>
-              {% if annotation and annotation.matched_team is defined %}
-                <em>Matched Team:</em> {{ annotation.matched_team }}<br>
-                <em>Matched Topics:</em> {{ annotation.matched_topics | join(', ') if annotation.matched_topics|length > 0 else "none" }}<br>
-                <em>Escalation Level:</em> {{ annotation.escalation_level }}
-              {% endif %}
-            </div>
-          {% endfor %}
+      <div class="snippets">
+        <h2>Negative Emotion Snippets</h2>
+        {% if analysis.snippets and analysis.snippets|length > 0 %}
+          <ul>
+            {% for snippet in analysis.snippets %}
+              <li>{{ snippet.action }}</li>
+            {% endfor %}
+          </ul>
         {% else %}
-          <p>No topic flow annotations available.</p>
+          <p>No negative emotion snippets found.</p>
         {% endif %}
-      </div>
+      </div>      
     </div>
     <div class="right-panel">
       <iframe id="pdfFrame" src="{{ pdf_url }}" title="PDF Document"></iframe>

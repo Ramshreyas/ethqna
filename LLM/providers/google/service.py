@@ -181,3 +181,26 @@ class LLMService:
             raise Exception(f"Error parsing PDF analysis response: {e}. Raw response: {raw_response}")
         return result
 
+    def generate_action_points(self, documents_json: str, prompt: str) -> dict:
+        print("DEBUG: Generating action points using LLM...", flush=True)
+        contents = [documents_json, prompt]
+        response = self.client.models.generate_content(
+            model=self.model,
+            config=types.GenerateContentConfig(system_instruction=prompt),
+            contents=contents
+        )
+        raw_response = response.text.strip()
+        print("DEBUG: Gemini API generate action points response:", raw_response, flush=True)
+        # Remove code fences if present
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+        try:
+            result = json.loads(raw_response)
+        except Exception as e:
+            raise Exception(f"Error parsing generate action points response: {e}. Raw response: {raw_response}")
+        return result

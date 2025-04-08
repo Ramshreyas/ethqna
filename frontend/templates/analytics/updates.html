@@ -85,7 +85,7 @@
   
   {% if data.posts %}
     {% for post in data.posts %}
-      <div class="post">
+      <div class="post" data-doc-id="{{ post.id }}">
         <pre style="white-space: pre-wrap;">{{ post.discord_post }}</pre>
         <div class="copy-link">
           <button class="copy-btn">📋 Copy Update</button>
